@@ -9,12 +9,13 @@ async function request(endpoint, options = {}) {
       ...options,
     })
 
+    const data = await response.json()
+
     if (!response.ok) {
-      const error = await response.json()
-      throw new Error(error.message || 'Something went wrong')
+      throw new Error(data.error || data.message || 'Something went wrong')
     }
 
-    return await response.json()
+    return data
   } catch (error) {
     console.error(`API Error [${endpoint}]:`, error.message)
     throw error
@@ -23,8 +24,10 @@ async function request(endpoint, options = {}) {
 
 // ── Transactions ───────────────────────────────────────────────────────
 export const transactionsAPI = {
-  getAll: () =>
-    request('/transactions'),
+  
+  // ✅ UPDATED: supports pagination
+  getAll: (page = 1, limit = 8) =>
+    request(`/transactions?page=${page}&limit=${limit}`),
 
   getBalance: () =>
     request('/transactions/balance'),
@@ -76,20 +79,12 @@ export const salesAPI = {
 
 // ── Forecast API ──────────────────────────────────────────
 export const forecastAPI = {
- 
+
   // Full forecast + recent sales history (for chart)
-  getForecast: async () => {
-    const res = await fetch(`${BASE_URL}/forecast`)
-    if (!res.ok) throw new Error('Forecast fetch failed')
-    return res.json()
-  },
- 
-  // Budget number only (for RecommendationCard)
-  getBudget: async () => {
-    const res = await fetch(`${BASE_URL}/forecast/budget`)
-    if (!res.ok) throw new Error('Budget fetch failed')
-    return res.json()
-  },
- 
+  getForecast: () =>
+    request('/forecast'),
+
+  // Budget number only
+  getBudget: () =>
+    request('/forecast/budget'),
 }
- 

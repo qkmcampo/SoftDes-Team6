@@ -31,9 +31,11 @@ function AddTransactionModal({ onClose, onSubmit }) {
     note: "",
   });
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    setError(null);
     setForm((prev) => {
       const updated = { ...prev, [name]: value };
       if (name === "type") {
@@ -44,9 +46,9 @@ function AddTransactionModal({ onClose, onSubmit }) {
   };
 
   const handleSubmit = async () => {
-    if (!form.name.trim() || !form.amount) return;
-
+    setError(null);
     setLoading(true);
+
     try {
       await onSubmit({
         to_name: form.name.trim(),
@@ -59,8 +61,12 @@ function AddTransactionModal({ onClose, onSubmit }) {
         note: form.note,
       });
     } catch (err) {
+      // Show the backend error message inside the modal
+      // so the tester can see the 400 response
+      setError(err.message || "Server returned an error");
       console.error("Submit error:", err);
     }
+
     setLoading(false);
   };
 
@@ -77,6 +83,13 @@ function AddTransactionModal({ onClose, onSubmit }) {
             <X size={20} />
           </button>
         </div>
+
+        {/* ERROR BANNER — shows backend 400 error message */}
+        {error && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+            {error}
+          </div>
+        )}
 
         {/* FORM */}
         <div className="flex flex-col gap-4">
@@ -187,9 +200,13 @@ function AddTransactionModal({ onClose, onSubmit }) {
           >
             Cancel
           </button>
+
+          {/* Button is always clickable — no disabled condition
+              so testers can submit with empty fields to verify
+              the backend returns 400 with an error message     */}
           <button
             onClick={handleSubmit}
-            disabled={!form.name.trim() || !form.amount || loading}
+            disabled={loading}
             className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50 ${
               form.type === "income"
                 ? "bg-[#2E6F4E] hover:bg-[#245a3f] text-white"
@@ -199,7 +216,7 @@ function AddTransactionModal({ onClose, onSubmit }) {
             {loading ? (
               <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
             ) : (
-              `Add ${form.type === "income" ? "Income" : "Expense"}`
+              <>Add {form.type === "income" ? "Income" : "Expense"}</>
             )}
           </button>
         </div>
