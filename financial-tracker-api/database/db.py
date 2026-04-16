@@ -1,119 +1,118 @@
-import sqlite3
 import os
-import datetime
-import random
+import sqlite3
 
 DB_NAME = "financial_tracker.db"
-DB_PATH = os.path.join(os.path.dirname(__file__), DB_NAME)
+DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), DB_NAME)
+DB_PATH = os.getenv("DATABASE_PATH", DEFAULT_DB_PATH)
 
-# -----------------------------
-# DATABASE CONNECTION
-# -----------------------------
-def get_connection():
+
+def _ensure_database_directory() -> None:
+    database_dir = os.path.dirname(DB_PATH)
+    if database_dir:
+        os.makedirs(database_dir, exist_ok=True)
+
+
+def get_connection() -> sqlite3.Connection:
+    _ensure_database_directory()
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
 
-def get_db():
+
+def get_db() -> sqlite3.Connection:
     return get_connection()
 
-# -----------------------------
-# INITIALIZE DATABASE
-# -----------------------------
-def init_db():
+
+def _get_table_columns(cursor: sqlite3.Cursor, table_name: str) -> set[str]:
+    cursor.execute(f"PRAGMA table_info({table_name})")
+    return {row[1] for row in cursor.fetchall()}
+
+
+def _create_transactions_table(cursor: sqlite3.Cursor) -> None:
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS transactions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT NOT NULL,
+            category TEXT NOT NULL,
+            amount REAL NOT NULL,
+            date TEXT NOT NULL,
+            note TEXT
+        )
+        """
+    )
+
+
+def _create_storage_table(cursor: sqlite3.Cursor) -> None:
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS storage (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_name TEXT NOT NULL,
+            emoji TEXT,
+            current_stock INTEGER,
+            unit TEXT,
+            min_level INTEGER,
+            status TEXT,
+            updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+
+    if "updated_at" not in _get_table_columns(cursor, "storage"):
+        cursor.execute("ALTER TABLE storage ADD COLUMN updated_at TEXT")
+
+
+def _create_sales_table(cursor: sqlite3.Cursor) -> None:
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS sales (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            item_name TEXT,
+            quantity INTEGER,
+            price REAL,
+            total REAL,
+            date TEXT
+        )
+        """
+    )
+
+
+def init_db() -> None:
+    """Create required tables without inserting sample transactions."""
     conn = get_connection()
-    cursor = conn.cursor()
+    try:
+        cursor = conn.cursor()
+        _create_transactions_table(cursor)
+        _create_storage_table(cursor)
+        _create_sales_table(cursor)
+        conn.commit()
+    finally:
+        conn.close()
 
-    # -----------------------------
-    # TRANSACTIONS TABLE (FIXED)
-    # -----------------------------
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS transactions (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        type TEXT NOT NULL,
-        category TEXT NOT NULL,
-        amount REAL NOT NULL,
-        date TEXT NOT NULL,
-        note TEXT
-    )
-    """)
 
-    # -----------------------------
-    # STORAGE TABLE
-    # -----------------------------
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS storage (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        item_name TEXT NOT NULL,
-        emoji TEXT,
-        current_stock INTEGER,
-        unit TEXT,
-        min_level INTEGER,
-        status TEXT
-    )
-    """)
+def reset_transactions() -> None:
+    """Clear all transactions and reset the next transaction ID to 1."""
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        _create_transactions_table(cursor)
+        cursor.execute("DELETE FROM transactions")
 
-    # -----------------------------
-    # SALES TABLE
-    # -----------------------------
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS sales (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        item_name TEXT,
-        quantity INTEGER,
-        price REAL,
-        total REAL,
-        date TEXT
-    )
-    """)
+        try:
+            cursor.execute(
+                "DELETE FROM sqlite_sequence WHERE name = ?",
+                ("transactions",),
+            )
+        except sqlite3.OperationalError:
+            # sqlite_sequence may not exist yet on a brand-new database.
+            pass
 
-    # -----------------------------
-    # INSERT STORAGE ONLY IF EMPTY
-    # -----------------------------
-    cursor.execute("SELECT COUNT(*) FROM storage")
-    if cursor.fetchone()[0] == 0:
-        cursor.executemany("""
-        INSERT INTO storage (item_name, emoji, current_stock, unit, min_level, status)
-        VALUES (?, ?, ?, ?, ?, ?)
-        """, [
-            ("Canned Tuna", "🥫", 10, "pcs", 30, "LOW"),
-            ("Soft Drink", "🥤", 6, "bottles", 20, "CRITICAL"),
-            ("Cooking Oil", "🫙", 5, "bottles", 20, "CRITICAL"),
-            ("Instant Noodles", "🍜", 50, "packs", 20, "OK"),
-        ])
+        conn.commit()
+    finally:
+        conn.close()
 
-    # -----------------------------
-    # INSERT SALES ONLY IF EMPTY
-    # -----------------------------
-    cursor.execute("SELECT COUNT(*) FROM sales")
-    if cursor.fetchone()[0] == 0:
-
-        end_date = datetime.date.today()
-        sales_entries = []
-
-        for i in range(30):
-            current_date = end_date - datetime.timedelta(days=(29 - i))
-            total = 800 + (i * 10) + random.randint(-50, 50)
-
-            sales_entries.append((
-                "Daily Revenue",
-                1,
-                total,
-                total,
-                current_date.strftime("%Y-%m-%d")
-            ))
-
-        cursor.executemany("""
-        INSERT INTO sales (item_name, quantity, price, total, date)
-        VALUES (?, ?, ?, ?, ?)
-        """, sales_entries)
-
-    # ❗ IMPORTANT: DO NOT DELETE TRANSACTIONS
-    # ❗ KEEP USER DATA SAFE
-
-    conn.commit()
-    conn.close()
-    print("Database initialized (safe mode).")
 
 if __name__ == "__main__":
     init_db()
+    print("Database initialized successfully.")

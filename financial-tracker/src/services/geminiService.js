@@ -1,6 +1,28 @@
-const API_BASE = "http://localhost:5000/api";
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").replace(
+  /\/$/,
+  "",
+);
+const GENERIC_ERROR_MESSAGE = "Something went wrong. Please try again.";
+const NETWORK_ERROR_MESSAGE =
+  "Unable to connect to the server. Please check if the backend is running.";
+const EMPTY_REPLY_MESSAGE = "No reply received from the assistant.";
+
+function normalizeHistory(history) {
+  return Array.isArray(history) ? history : [];
+}
+
+async function parseJsonSafely(response) {
+  try {
+    return await response.json();
+  } catch (error) {
+    console.error("Assistant API parse error:", error);
+    return null;
+  }
+}
 
 export async function sendMessage(message, history = []) {
+  const safeHistory = normalizeHistory(history);
+
   try {
     const response = await fetch(`${API_BASE}/assistant/chat`, {
       method: "POST",
@@ -9,20 +31,22 @@ export async function sendMessage(message, history = []) {
       },
       body: JSON.stringify({
         message,
-        history,
+        history: safeHistory,
       }),
     });
 
-    const data = await response.json();
+    const data = await parseJsonSafely(response);
 
     if (!response.ok) {
-      return data.error || "Something went wrong. Please try again.";
+      return data?.error || GENERIC_ERROR_MESSAGE;
     }
 
-    return data.reply;
+    return typeof data?.reply === "string" && data.reply.trim()
+      ? data.reply
+      : EMPTY_REPLY_MESSAGE;
   } catch (error) {
     console.error("Assistant API error:", error);
-    return "Unable to connect to the server. Please check if the backend is running.";
+    return NETWORK_ERROR_MESSAGE;
   }
 }
 

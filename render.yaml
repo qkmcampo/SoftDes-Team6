@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: gerald-retail-api
+    runtime: python
+    rootDir: financial-tracker-api
+    plan: starter
+    region: singapore
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --timeout 180
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.11
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: CORS_ORIGINS
+        value: http://localhost:5173,https://*.vercel.app
+      - key: DATABASE_PATH
+        value: /var/data/financial_tracker.db
+    disk:
+      name: gerald-retail-api-data
+      mountPath: /var/data
+      sizeGB: 1

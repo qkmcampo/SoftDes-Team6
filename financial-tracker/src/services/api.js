@@ -1,90 +1,166 @@
-// Base URL of your Flask backend
-const BASE_URL = 'http://localhost:5000/api'
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api").replace(
+  /\/$/,
+  "",
+);
+const responseCache = new Map();
 
-// ── Generic fetch helper ───────────────────────────────────────────────
+function cloneData(data) {
+  if (data == null) {
+    return data;
+  }
+
+  return JSON.parse(JSON.stringify(data));
+}
+
+function getCacheKey(endpoint, method) {
+  return `${method}:${endpoint}`;
+}
+
+function clearResponseCache() {
+  responseCache.clear();
+}
+
 async function request(endpoint, options = {}) {
+  const {
+    cacheTTL = 0,
+    skipCache = false,
+    headers = {},
+    method = "GET",
+    ...fetchOptions
+  } = options;
+
+  const normalizedMethod = method.toUpperCase();
+  const cacheKey = getCacheKey(endpoint, normalizedMethod);
+
+  if (normalizedMethod === "GET" && cacheTTL > 0 && !skipCache) {
+    const cachedEntry = responseCache.get(cacheKey);
+    if (cachedEntry && Date.now() - cachedEntry.timestamp < cacheTTL) {
+      return cloneData(cachedEntry.data);
+    }
+  }
+
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options,
-    })
+      method: normalizedMethod,
+      headers: { "Content-Type": "application/json", ...headers },
+      ...fetchOptions,
+    });
 
-    const data = await response.json()
+    const rawText = await response.text();
+    let data = null;
 
-    if (!response.ok) {
-      throw new Error(data.error || data.message || 'Something went wrong')
+    if (rawText) {
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        data = rawText;
+      }
     }
 
-    return data
+    if (!response.ok) {
+      const message =
+        (typeof data === "object" && data?.error) ||
+        (typeof data === "object" && data?.message) ||
+        "Something went wrong";
+      const error = new Error(message);
+      error.data = typeof data === "object" ? data : null;
+      error.status = response.status;
+      throw error;
+    }
+
+    if (normalizedMethod === "GET" && cacheTTL > 0) {
+      responseCache.set(cacheKey, {
+        timestamp: Date.now(),
+        data: cloneData(data),
+      });
+    } else if (normalizedMethod !== "GET") {
+      clearResponseCache();
+    }
+
+    return data;
   } catch (error) {
-    console.error(`API Error [${endpoint}]:`, error.message)
-    throw error
+    console.error(`API Error [${endpoint}]:`, error.message);
+    throw error;
   }
 }
 
-// ── Transactions ───────────────────────────────────────────────────────
 export const transactionsAPI = {
-  
-  // ✅ UPDATED: supports pagination
-  getAll: (page = 1, limit = 8) =>
-    request(`/transactions?page=${page}&limit=${limit}`),
+  getAll: (page = 1, limit = 8, options = {}) =>
+    request(`/transactions?page=${page}&limit=${limit}`, {
+      cacheTTL: 10000,
+      ...options,
+    }),
 
-  getBalance: () =>
-    request('/transactions/balance'),
+  getBalance: (options = {}) =>
+    request("/transactions/balance", {
+      cacheTTL: 12000,
+      ...options,
+    }),
 
   add: (data) =>
-    request('/transactions', {
-      method: 'POST',
+    request("/transactions", {
+      method: "POST",
       body: JSON.stringify(data),
     }),
 
   delete: (id) =>
     request(`/transactions/${id}`, {
-      method: 'DELETE',
+      method: "DELETE",
     }),
-}
+};
 
-// ── Storage / Inventory ────────────────────────────────────────────────
 export const storageAPI = {
-  getAll: () =>
-    request('/storage'),
+  getAll: (options = {}) =>
+    request("/storage", {
+      cacheTTL: 15000,
+      ...options,
+    }),
 
   add: (data) =>
-    request('/storage', {
-      method: 'POST',
+    request("/storage", {
+      method: "POST",
       body: JSON.stringify(data),
     }),
 
   updateStock: (id, current_stock) =>
     request(`/storage/${id}`, {
-      method: 'PUT',
+      method: "PUT",
       body: JSON.stringify({ current_stock }),
     }),
-}
+};
 
-// ── Sales ──────────────────────────────────────────────────────────────
 export const salesAPI = {
-  getAll: () =>
-    request('/sales'),
+  getAll: (options = {}) =>
+    request("/sales", {
+      cacheTTL: 15000,
+      ...options,
+    }),
 
-  getSummary: () =>
-    request('/sales/summary'),
+  getSummary: (options = {}) =>
+    request("/sales/summary", {
+      cacheTTL: 15000,
+      ...options,
+    }),
 
   add: (data) =>
-    request('/sales', {
-      method: 'POST',
+    request("/sales", {
+      method: "POST",
       body: JSON.stringify(data),
     }),
-}
+};
 
-// ── Forecast API ──────────────────────────────────────────
 export const forecastAPI = {
+  getForecast: (options = {}) =>
+    request("/forecast", {
+      cacheTTL: 30000,
+      ...options,
+    }),
 
-  // Full forecast + recent sales history (for chart)
-  getForecast: () =>
-    request('/forecast'),
+  getBudget: (options = {}) =>
+    request("/forecast/budget", {
+      cacheTTL: 30000,
+      ...options,
+    }),
+};
 
-  // Budget number only
-  getBudget: () =>
-    request('/forecast/budget'),
-}
+export { clearResponseCache };

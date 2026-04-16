@@ -2,6 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
+import re
 
 from database.db import init_db
 from routes.transactions import transactions_bp
@@ -23,12 +24,35 @@ load_dotenv()
 app = Flask(__name__)
 
 
+def _build_cors_origins():
+    raw_origins = os.getenv("CORS_ORIGINS") or os.getenv("FRONTEND_URL")
+    if not raw_origins:
+        raw_origins = "http://localhost:5173"
+
+    origins = []
+    for value in raw_origins.split(","):
+        item = value.strip()
+        if not item:
+            continue
+
+        if "*" in item:
+            pattern = "^" + re.escape(item).replace("\\*", ".*") + "$"
+            origins.append(re.compile(pattern))
+        else:
+            origins.append(item)
+
+    return origins or ["http://localhost:5173"]
+
+
+init_db()
+
+
 # -----------------------------
 # Enable CORS (allow React frontend)
 # -----------------------------
 CORS(
     app,
-    resources={r"/api/*": {"origins": "http://localhost:5173"}},
+    resources={r"/api/*": {"origins": _build_cors_origins()}},
     supports_credentials=True
 )
 
@@ -58,9 +82,6 @@ def health():
 # Run Flask server
 # -----------------------------
 if __name__ == "__main__":
-
-    init_db()
-
     print("===================================")
     print(" Financial Tracker API Started")
     print(" Backend running at: http://localhost:5000")
@@ -68,6 +89,6 @@ if __name__ == "__main__":
 
     app.run(
         host="0.0.0.0",
-        port=5000,
+        port=int(os.getenv("PORT", "5000")),
         debug=True
     )
