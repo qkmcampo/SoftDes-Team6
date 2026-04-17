@@ -2,7 +2,7 @@ import os
 import numpy as np
 import traceback
 from flask import Blueprint, jsonify
-from database.db import get_db
+from database.db import execute, get_db
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.neural_network import MLPRegressor
 
@@ -75,7 +75,7 @@ def _retrain_model(sales_data):
 def _get_daily_sales():
     conn = get_db()
     cur = conn.cursor()
-    cur.execute('''
+    execute(cur, '''
         SELECT date, SUM(total) as total_sales
         FROM sales
         WHERE total > 0

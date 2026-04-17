@@ -1,5 +1,5 @@
-import { X } from "lucide-react";
-import { useState } from "react";
+import { CheckCircle2, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 const expenseCategories = [
   "Bank Transfer",
@@ -32,10 +32,74 @@ function AddTransactionModal({ onClose, onSubmit }) {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+  const closeTimerRef = useRef(null);
+
+  useEffect(() => () => {
+    if (closeTimerRef.current) {
+      clearTimeout(closeTimerRef.current);
+    }
+  }, []);
+
+  const isFieldHighlighted = (fieldName) => {
+    if (!error?.field) return false;
+
+    if (fieldName === "name") {
+      return ["name", "to_name"].includes(error.field);
+    }
+
+    return error.field === fieldName;
+  };
+
+  const getInputClassName = (fieldName) =>
+    `w-full bg-[#121212] border text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#F9B672] ${
+      isFieldHighlighted(fieldName)
+        ? "border-red-500/60 bg-red-500/5"
+        : "border-[#333]"
+    }`;
+
+  const validateForm = () => {
+    const trimmedName = form.name.trim();
+    const amountText = String(form.amount ?? "").trim();
+
+    if (!trimmedName) {
+      return {
+        title: "Missing description",
+        message: "Please enter a transaction name or description before saving.",
+        details:
+          form.type === "income"
+            ? "Add the income source so the record is easier to identify later."
+            : "Add the supplier, recipient, or payment description so the record is easier to identify later.",
+        field: "name",
+      };
+    }
+
+    if (!amountText) {
+      return {
+        title: "Missing amount",
+        message: "Please enter an amount before saving this transaction.",
+        details: "Use numbers only, for example 500 or 1250.75.",
+        field: "amount",
+      };
+    }
+
+    const amountValue = Number(amountText);
+    if (Number.isNaN(amountValue)) {
+      return {
+        title: "Invalid amount",
+        message: "Please enter a valid numeric amount.",
+        details: "Use numbers only, for example 500 or 1250.75.",
+        field: "amount",
+      };
+    }
+
+    return null;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setError(null);
+    setSuccess(null);
     setForm((prev) => {
       const updated = { ...prev, [name]: value };
       if (name === "type") {
@@ -47,23 +111,52 @@ function AddTransactionModal({ onClose, onSubmit }) {
 
   const handleSubmit = async () => {
     setError(null);
+    setSuccess(null);
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
     setLoading(true);
 
     try {
-      await onSubmit({
+      const amountValue = Number(form.amount);
+      const payload = {
         to_name: form.name.trim(),
         category: form.category,
         type: form.type,
         amount: form.type === "expense"
-          ? -Math.abs(parseFloat(form.amount))
-          : Math.abs(parseFloat(form.amount)),
+          ? -Math.abs(amountValue)
+          : Math.abs(amountValue),
         date: form.date,
         note: form.note,
+      };
+      const response = await onSubmit(payload);
+
+      const recordLabel = payload.to_name || payload.category || "this transaction";
+      setSuccess({
+        title: response?.message || "Transaction saved successfully.",
+        message: `${form.type === "income" ? "Income" : "Expense"} entry for ${recordLabel} has been recorded.`,
+        details: payload.date
+          ? `Transaction date: ${payload.date}. This window will close automatically.`
+          : "The transaction was saved without a date. This window will close automatically.",
       });
+
+      closeTimerRef.current = setTimeout(() => {
+        onClose();
+      }, 1600);
     } catch (err) {
-      // Show the backend error message inside the modal
-      // so the tester can see the 400 response
-      setError(err.message || "Server returned an error");
+      const errorData = err.data || {};
+      setError({
+        title: errorData.title || "Unable to save transaction",
+        message:
+          errorData.error ||
+          err.message ||
+          "We could not save the transaction. Please review the form and try again.",
+        details: errorData.details || null,
+        field: errorData.field || null,
+      });
       console.error("Submit error:", err);
     }
 
@@ -73,21 +166,41 @@ function AddTransactionModal({ onClose, onSubmit }) {
   const categories = form.type === "income" ? incomeCategories : expenseCategories;
 
   return (
-    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-[#1f1f1f] border border-[#333] rounded-2xl p-6 w-full max-w-md shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:p-6">
+      <div className="max-h-[calc(100vh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-[#333] bg-[#1f1f1f] p-5 shadow-2xl sm:max-h-[90vh] sm:p-6">
 
         {/* HEADER */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="mb-6 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-white">Add Transaction</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-white transition">
             <X size={20} />
           </button>
         </div>
 
-        {/* ERROR BANNER — shows backend 400 error message */}
+        {/* SUCCESS BANNER */}
+        {success && (
+          <div className="mb-4 px-4 py-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-sm">
+            <div className="flex items-start gap-3">
+              <CheckCircle2 size={18} className="text-emerald-300 mt-0.5 shrink-0" />
+              <div>
+                <p className="font-semibold text-emerald-200">{success.title}</p>
+                <p className="mt-1 text-emerald-100/90">{success.message}</p>
+                {success.details && (
+                  <p className="mt-2 text-xs text-emerald-100/70">{success.details}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ERROR BANNER */}
         {error && (
-          <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-            {error}
+          <div className="mb-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-sm">
+            <p className="font-semibold text-red-300">{error.title}</p>
+            <p className="mt-1 text-red-400">{error.message}</p>
+            {error.details && (
+              <p className="mt-2 text-xs text-red-200/80">{error.details}</p>
+            )}
           </div>
         )}
 
@@ -97,7 +210,7 @@ function AddTransactionModal({ onClose, onSubmit }) {
           {/* TYPE TOGGLE */}
           <div>
             <label className="text-sm text-gray-400 mb-2 block">Type</label>
-            <div className="flex gap-2">
+            <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={() => handleChange({ target: { name: "type", value: "expense" } })}
@@ -133,7 +246,8 @@ function AddTransactionModal({ onClose, onSubmit }) {
               value={form.name}
               onChange={handleChange}
               placeholder={form.type === "income" ? "e.g. Store Sales" : "e.g. Supplier Payment"}
-              className="w-full bg-[#121212] border border-[#333] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#F9B672]"
+              aria-invalid={isFieldHighlighted("name")}
+              className={getInputClassName("name")}
             />
           </div>
 
@@ -144,7 +258,8 @@ function AddTransactionModal({ onClose, onSubmit }) {
               name="category"
               value={form.category}
               onChange={handleChange}
-              className="w-full bg-[#121212] border border-[#333] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#F9B672]"
+              aria-invalid={isFieldHighlighted("category")}
+              className={getInputClassName("category")}
             >
               {categories.map((c) => (
                 <option key={c} value={c}>{c}</option>
@@ -154,14 +269,18 @@ function AddTransactionModal({ onClose, onSubmit }) {
 
           {/* AMOUNT */}
           <div>
-            <label className="text-sm text-gray-400 mb-1 block">Amount (₱)</label>
+            <label className="text-sm text-gray-400 mb-1 block">Amount (PHP)</label>
             <input
               name="amount"
               type="number"
+              inputMode="decimal"
+              min="0"
+              step="0.01"
               value={form.amount}
               onChange={handleChange}
               placeholder="e.g. 500"
-              className="w-full bg-[#121212] border border-[#333] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#F9B672]"
+              aria-invalid={isFieldHighlighted("amount")}
+              className={getInputClassName("amount")}
             />
           </div>
 
@@ -173,7 +292,7 @@ function AddTransactionModal({ onClose, onSubmit }) {
               type="date"
               value={form.date}
               onChange={handleChange}
-              className="w-full bg-[#121212] border border-[#333] text-white rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#F9B672]"
+              className={getInputClassName("date")}
             />
           </div>
 
@@ -193,12 +312,12 @@ function AddTransactionModal({ onClose, onSubmit }) {
         </div>
 
         {/* ACTIONS */}
-        <div className="flex gap-3 mt-6">
+        <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <button
             onClick={onClose}
             className="flex-1 border border-[#333] text-gray-300 py-2.5 rounded-xl text-sm font-semibold hover:bg-[#2a2a2a] transition"
           >
-            Cancel
+            {success ? "Close" : "Cancel"}
           </button>
 
           {/* Button is always clickable — no disabled condition
@@ -206,7 +325,7 @@ function AddTransactionModal({ onClose, onSubmit }) {
               the backend returns 400 with an error message     */}
           <button
             onClick={handleSubmit}
-            disabled={loading}
+            disabled={loading || !!success}
             className={`flex-1 py-2.5 rounded-xl text-sm font-semibold transition disabled:opacity-50 ${
               form.type === "income"
                 ? "bg-[#2E6F4E] hover:bg-[#245a3f] text-white"
@@ -215,6 +334,8 @@ function AddTransactionModal({ onClose, onSubmit }) {
           >
             {loading ? (
               <span className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin inline-block" />
+            ) : success ? (
+              <>Saved</>
             ) : (
               <>Add {form.type === "income" ? "Income" : "Expense"}</>
             )}
@@ -227,3 +348,4 @@ function AddTransactionModal({ onClose, onSubmit }) {
 }
 
 export default AddTransactionModal;
+

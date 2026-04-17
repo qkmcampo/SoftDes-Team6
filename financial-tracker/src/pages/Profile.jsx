@@ -1,41 +1,36 @@
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import {
-  User,
-  Shield,
-  Wallet,
   BarChart3,
   Bot,
-  Save,
-  Pencil,
-  X,
-  TrendingUp,
-  TrendingDown,
-  Receipt,
-  PiggyBank,
-  LogOut,
   ChevronDown,
+  LogOut,
+  Pencil,
+  PiggyBank,
+  Save,
+  Shield,
+  TrendingDown,
+  TrendingUp,
+  User,
+  Wallet,
+  X,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import useSectionFocus from "../hooks/useSectionFocus";
 
 function Profile({ user, onLogout }) {
   const navigate = useNavigate();
-
-  // ── User Information State (pre-filled from Firebase user) ──
+  const accountInfoRef = useRef(null);
+  const financialSettingsRef = useRef(null);
+  const assistantSecurityRef = useRef(null);
   const [isEditing, setIsEditing] = useState(false);
   const [userInfo, setUserInfo] = useState({
-    fullName: user?.fullName || "Keneth Campo",
+    fullName: user?.fullName || "Team4",
     email: user?.email || "admin@email.com",
-    businessName: "Campo Retail Store",
+    businessName: "Gerald Retail Store",
     phone: "+63 912 345 6789",
     address: "Quezon City, Metro Manila",
   });
   const [editBuffer, setEditBuffer] = useState({ ...userInfo });
-
-  // Google profile photo from Firebase
-  const photoURL = user?.photoURL || null;
-  const provider = user?.provider || "demo";
-
-  // ── Financial Preferences State ──
   const [preferences, setPreferences] = useState({
     currency: "PHP",
     monthlyBudget: "32000",
@@ -43,8 +38,6 @@ function Profile({ user, onLogout }) {
     alertThreshold: "20",
     fiscalYearStart: "January",
   });
-
-  // ── AI Settings State ──
   const [aiSettings, setAiSettings] = useState({
     autoRecommendations: true,
     restockAlerts: true,
@@ -53,27 +46,71 @@ function Profile({ user, onLogout }) {
     assistantTone: "Professional",
   });
 
-  // ── Account Statistics ──
   const accountStats = {
     totalTransactions: 128,
-    totalExpenses: "₱58,420.00",
-    totalIncome: "₱120,456.00",
-    avgMonthlySpend: "₱9,736.67",
-    memberSince: "September 2024",
+    totalExpenses: "P58,420.00",
+    totalIncome: "P120,456.00",
     inventoryItems: 24,
+    memberSince: "September 2024",
   };
 
-  // ── Handlers ──
+  const photoURL = user?.photoURL || null;
+  const provider = user?.provider || "demo";
+
+  const providerLabel =
+    provider === "google.com"
+      ? "Google"
+      : provider === "demo"
+      ? "Demo"
+      : "Email";
+
+  const profileSignals = [
+    {
+      label: "Provider",
+      value: providerLabel,
+      tone: "default",
+      focusSection: "account-information",
+    },
+    {
+      label: "Savings target",
+      value: `${preferences.savingsGoal}%`,
+      tone: "accent",
+      focusSection: "financial-settings",
+    },
+    {
+      label: "Alert threshold",
+      value: `${preferences.alertThreshold}%`,
+      tone: "success",
+      focusSection: "financial-settings",
+    },
+  ];
+
+  const sectionRefs = useMemo(
+    () => ({
+      "account-information": accountInfoRef,
+      "financial-settings": financialSettingsRef,
+      "assistant-security": assistantSecurityRef,
+    }),
+    []
+  );
+
+  const focusedSection = useSectionFocus(sectionRefs);
+
+  const focusSection = (sectionId) => {
+    sectionRefs[sectionId]?.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  };
+
   const handleLogout = () => {
-    if (onLogout) {
-      onLogout();
-    }
+    onLogout?.();
     navigate("/login");
   };
 
   const handleEditToggle = () => {
     setEditBuffer({ ...userInfo });
-    setIsEditing(!isEditing);
+    setIsEditing((currentValue) => !currentValue);
   };
 
   const handleSaveProfile = () => {
@@ -82,309 +119,418 @@ function Profile({ user, onLogout }) {
   };
 
   const handlePreferenceChange = (key, value) => {
-    setPreferences((prev) => ({ ...prev, [key]: value }));
+    setPreferences((previousState) => ({ ...previousState, [key]: value }));
   };
 
   const handleAiToggle = (key) => {
-    setAiSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+    setAiSettings((previousState) => ({
+      ...previousState,
+      [key]: !previousState[key],
+    }));
   };
 
   const handleAiSelectChange = (key, value) => {
-    setAiSettings((prev) => ({ ...prev, [key]: value }));
+    setAiSettings((previousState) => ({ ...previousState, [key]: value }));
   };
 
-  // ── Reusable Components ──
-  const SectionHeader = ({ icon: Icon, title }) => (
-    <div className="flex items-center gap-2 mb-5">
-      <Icon size={18} className="text-[#F9B672]" />
-      <h3 className="text-[#050725] font-semibold">{title}</h3>
-    </div>
+  const SectionCard = ({ eyebrow, title, description, icon: Icon, children }) => (
+    <section className="surface-panel surface-panel-pad">
+      <div className="flex items-start gap-3">
+        <div className="icon-chip h-10 w-10">
+          <Icon size={17} />
+        </div>
+        <div>
+          <p className="section-eyebrow">{eyebrow}</p>
+          <h2 className="section-subtitle">{title}</h2>
+          {description ? <p className="section-copy">{description}</p> : null}
+        </div>
+      </div>
+      <div className="mt-6">{children}</div>
+    </section>
   );
 
-  const InfoRow = ({ label, value }) => (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-[#ECDFC7] last:border-0">
+  const DataRow = ({ label, value }) => (
+    <div className="surface-card flex flex-col gap-1 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
       <span className="text-sm text-[#84848A]">{label}</span>
-      <span className="text-sm font-medium text-[#050725] mt-1 sm:mt-0">{value}</span>
+      <span className="text-sm font-semibold text-[#050725]">{value}</span>
     </div>
   );
 
   const EditRow = ({ label, fieldKey }) => (
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between py-3 border-b border-[#ECDFC7] last:border-0 gap-2">
+    <div className="surface-card flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
       <span className="text-sm text-[#84848A]">{label}</span>
       <input
         type="text"
         value={editBuffer[fieldKey]}
-        onChange={(e) => setEditBuffer((prev) => ({ ...prev, [fieldKey]: e.target.value }))}
-        className="text-sm font-medium text-[#050725] bg-white border border-[#ECDFC7] rounded-lg px-3 py-1.5 w-full sm:w-64 focus:outline-none focus:border-[#F9B672] transition-colors"
+        onChange={(event) =>
+          setEditBuffer((previousState) => ({
+            ...previousState,
+            [fieldKey]: event.target.value,
+          }))
+        }
+        className="w-full rounded-2xl border border-[#2C2F45]/10 bg-white px-4 py-3 text-sm font-medium text-[#050725] outline-none focus:border-[#F9B672] sm:w-72"
       />
+    </div>
+  );
+
+  const PreferenceRow = ({ label, description, control }) => (
+    <div className="surface-card flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-sm font-semibold text-[#050725]">{label}</p>
+        <p className="mt-1 text-xs leading-6 text-[#84848A]">{description}</p>
+      </div>
+      {control}
+    </div>
+  );
+
+  const CompactRow = ({ label, value, control }) => (
+    <div className="surface-card flex items-center justify-between gap-3 px-4 py-3">
+      <p className="text-sm font-semibold text-[#050725]">{label}</p>
+      {control ? (
+        control
+      ) : (
+        <span className="text-sm font-medium text-[#6F6F76] text-right">{value}</span>
+      )}
     </div>
   );
 
   const ToggleSwitch = ({ enabled, onToggle }) => (
     <button
+      type="button"
       onClick={onToggle}
-      className={`relative w-11 h-6 rounded-full transition-colors duration-200 ${enabled ? "bg-[#2E6F4E]" : "bg-[#84848A]/30"}`}
+      className={`relative h-7 w-12 rounded-full transition ${enabled ? "bg-[#2E6F4E]" : "bg-[#84848A]/30"}`}
     >
-      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${enabled ? "translate-x-5" : "translate-x-0"}`} />
+      <span
+        className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${enabled ? "left-6" : "left-1"}`}
+      />
     </button>
   );
 
-  const StatCard = ({ icon: Icon, label, value, color }) => (
-    <div className="flex items-center gap-3 p-3 bg-[#ECDFC7]/60 rounded-xl">
-      <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: color + "18" }}>
-        <Icon size={18} style={{ color: color }} />
-      </div>
-      <div>
-        <p className="text-xs text-[#84848A]">{label}</p>
-        <p className="text-sm font-semibold text-[#050725]">{value}</p>
-      </div>
-    </div>
-  );
-
   const SelectDropdown = ({ value, options, onChange }) => (
-    <div className="relative">
+    <div className="relative w-full sm:w-auto">
       <select
         value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="appearance-none text-sm font-medium text-[#050725] bg-white border border-[#ECDFC7] rounded-lg px-3 py-1.5 pr-8 focus:outline-none focus:border-[#F9B672] transition-colors cursor-pointer"
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full appearance-none rounded-2xl border border-[#2C2F45]/10 bg-white px-4 py-3 pr-10 text-sm font-medium text-[#050725] outline-none focus:border-[#F9B672]"
       >
-        {options.map((opt) => (
-          <option key={opt} value={opt}>{opt}</option>
+        {options.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
         ))}
       </select>
-      <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#84848A] pointer-events-none" />
+      <ChevronDown size={14} className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#84848A]" />
     </div>
   );
 
+  const StatTile = ({ icon: Icon, label, value, tone = "default" }) => {
+    const toneClasses = {
+      default: "bg-[#2C2F45]/10 text-[#2C2F45]",
+      success: "bg-[#2E6F4E]/14 text-[#2E6F4E]",
+      danger: "bg-red-100 text-red-700",
+      accent: "bg-[#F9B672]/18 text-[#C97D2F]",
+    };
+
+    return (
+      <div className="surface-card px-4 py-4">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${toneClasses[tone] || toneClasses.default}`}>
+          <Icon size={18} />
+        </div>
+        <p className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-[#84848A]">{label}</p>
+        <p className="mt-2 text-lg font-semibold text-[#050725]">{value}</p>
+      </div>
+    );
+  };
+
   return (
-    <div className="max-w-4xl mx-auto p-8 space-y-6">
-      {/* ═══════════════════════════════════════════
-          SECTION 1 — PROFILE HEADER / USER INFO
-          ═══════════════════════════════════════════ */}
-      <div className="bg-[#F4E9DA] rounded-2xl p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-5">
-          <div className="flex items-center gap-5">
-            {/* Avatar: Google photo or default icon */}
+    <div className="page-stack">
+      <section className="surface-panel surface-panel-pad">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
             {photoURL ? (
               <img
                 src={photoURL}
                 alt="Profile"
-                className="w-16 h-16 rounded-xl object-cover shadow-sm"
+                className="h-[4.5rem] w-[4.5rem] rounded-[22px] object-cover shadow-[0_14px_28px_rgba(5,7,37,0.12)] sm:h-20 sm:w-20"
                 referrerPolicy="no-referrer"
               />
             ) : (
-              <div className="w-16 h-16 bg-[#2C2F45] rounded-xl flex items-center justify-center">
-                <User size={28} className="text-white" />
+              <div className="flex h-[4.5rem] w-[4.5rem] items-center justify-center rounded-[22px] bg-[#2C2F45] text-white shadow-[0_14px_28px_rgba(5,7,37,0.12)] sm:h-20 sm:w-20">
+                <User size={28} />
               </div>
             )}
-            <div>
-              <h2 className="text-lg font-semibold text-[#050725]">{userInfo.fullName}</h2>
-              <p className="text-sm text-[#84848A]">{userInfo.email}</p>
-              {provider === "google.com" && (
-                <span className="inline-flex items-center gap-1 mt-1 text-[10px] text-[#84848A] bg-[#ECDFC7] px-2 py-0.5 rounded-full">
-                  <svg width="12" height="12" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/>
-                    <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#34A853"/>
-                    <path d="M3.964 10.706A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.997 8.997 0 0 0 0 9c0 1.452.348 2.827.957 4.038l3.007-2.332Z" fill="#FBBC05"/>
-                    <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.962L3.964 7.294C4.672 5.166 6.656 3.58 9 3.58Z" fill="#EA4335"/>
-                  </svg>
-                  Signed in with Google
-                </span>
-              )}
-            </div>
-          </div>
 
-          <button
-            onClick={isEditing ? handleSaveProfile : handleEditToggle}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-              isEditing ? "bg-[#2E6F4E] hover:bg-[#245a3f] text-white" : "bg-[#2C2F45] hover:bg-[#050725] text-white"
-            }`}
-          >
-            {isEditing ? <Save size={15} /> : <Pencil size={15} />}
-            {isEditing ? "Save" : "Edit"}
-          </button>
-        </div>
-
-        <div className="h-px bg-[#ECDFC7] mb-4" />
-
-        {isEditing ? (
-          <div>
-            <EditRow label="Full Name" fieldKey="fullName" />
-            <EditRow label="Email" fieldKey="email" />
-            <EditRow label="Business Name" fieldKey="businessName" />
-            <EditRow label="Phone" fieldKey="phone" />
-            <EditRow label="Address" fieldKey="address" />
-            <div className="flex justify-end mt-4">
-              <button onClick={handleEditToggle} className="flex items-center gap-1.5 text-sm text-[#84848A] hover:text-[#050725] transition-colors">
-                <X size={14} /> Cancel
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div>
-            <InfoRow label="Full Name" value={userInfo.fullName} />
-            <InfoRow label="Email" value={userInfo.email} />
-            <InfoRow label="Business Name" value={userInfo.businessName} />
-            <InfoRow label="Phone" value={userInfo.phone} />
-            <InfoRow label="Address" value={userInfo.address} />
-          </div>
-        )}
-      </div>
-
-      {/* ═══════════════════════════════════════════
-          SECTION 2 — FINANCIAL PREFERENCES
-          ═══════════════════════════════════════════ */}
-      <div className="bg-[#F4E9DA] rounded-2xl p-6 shadow-sm">
-        <SectionHeader icon={Wallet} title="Financial Preferences" />
-        <div className="space-y-0">
-          <div className="flex items-center justify-between py-3 border-b border-[#ECDFC7]">
             <div>
-              <p className="text-sm font-medium text-[#050725]">Currency</p>
-              <p className="text-xs text-[#84848A]">Display currency for all amounts</p>
-            </div>
-            <SelectDropdown value={preferences.currency} options={["PHP", "USD", "EUR", "JPY", "GBP"]} onChange={(val) => handlePreferenceChange("currency", val)} />
-          </div>
-          <div className="flex items-center justify-between py-3 border-b border-[#ECDFC7]">
-            <div>
-              <p className="text-sm font-medium text-[#050725]">Monthly Budget Limit</p>
-              <p className="text-xs text-[#84848A]">Set your target monthly spending cap</p>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-sm text-[#84848A]">₱</span>
-              <input type="number" value={preferences.monthlyBudget} onChange={(e) => handlePreferenceChange("monthlyBudget", e.target.value)}
-                className="text-sm font-medium text-[#050725] bg-white border border-[#ECDFC7] rounded-lg px-3 py-1.5 w-28 focus:outline-none focus:border-[#F9B672] transition-colors text-right" />
-            </div>
-          </div>
-          <div className="flex items-center justify-between py-3 border-b border-[#ECDFC7]">
-            <div>
-              <p className="text-sm font-medium text-[#050725]">Savings Goal</p>
-              <p className="text-xs text-[#84848A]">Percentage of income to save each month</p>
-            </div>
-            <div className="flex items-center gap-1">
-              <input type="number" min="0" max="100" value={preferences.savingsGoal} onChange={(e) => handlePreferenceChange("savingsGoal", e.target.value)}
-                className="text-sm font-medium text-[#050725] bg-white border border-[#ECDFC7] rounded-lg px-3 py-1.5 w-20 focus:outline-none focus:border-[#F9B672] transition-colors text-right" />
-              <span className="text-sm text-[#84848A]">%</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between py-3 border-b border-[#ECDFC7]">
-            <div>
-              <p className="text-sm font-medium text-[#050725]">Low Stock Alert Threshold</p>
-              <p className="text-xs text-[#84848A]">Alert when inventory falls below this percentage</p>
-            </div>
-            <div className="flex items-center gap-1">
-              <input type="number" min="0" max="100" value={preferences.alertThreshold} onChange={(e) => handlePreferenceChange("alertThreshold", e.target.value)}
-                className="text-sm font-medium text-[#050725] bg-white border border-[#ECDFC7] rounded-lg px-3 py-1.5 w-20 focus:outline-none focus:border-[#F9B672] transition-colors text-right" />
-              <span className="text-sm text-[#84848A]">%</span>
-            </div>
-          </div>
-          <div className="flex items-center justify-between py-3">
-            <div>
-              <p className="text-sm font-medium text-[#050725]">Fiscal Year Start</p>
-              <p className="text-xs text-[#84848A]">When your business fiscal year begins</p>
-            </div>
-            <SelectDropdown value={preferences.fiscalYearStart}
-              options={["January","February","March","April","May","June","July","August","September","October","November","December"]}
-              onChange={(val) => handlePreferenceChange("fiscalYearStart", val)} />
-          </div>
-        </div>
-      </div>
-
-      {/* ═══════════════════════════════════════════
-          SECTION 3 — ACCOUNT STATISTICS
-          ═══════════════════════════════════════════ */}
-      <div className="bg-[#F4E9DA] rounded-2xl p-6 shadow-sm">
-        <SectionHeader icon={BarChart3} title="Account Statistics" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <StatCard icon={Receipt} label="Total Transactions" value={accountStats.totalTransactions} color="#050725" />
-          <StatCard icon={TrendingDown} label="Total Expenses" value={accountStats.totalExpenses} color="#E74C3C" />
-          <StatCard icon={TrendingUp} label="Total Income" value={accountStats.totalIncome} color="#2E6F4E" />
-          <StatCard icon={Wallet} label="Avg Monthly Spend" value={accountStats.avgMonthlySpend} color="#F9B672" />
-          <StatCard icon={PiggyBank} label="Inventory Items" value={accountStats.inventoryItems} color="#2C2F45" />
-          <StatCard icon={BarChart3} label="Member Since" value={accountStats.memberSince} color="#84848A" />
-        </div>
-      </div>
-
-      {/* ═══════════════════════════════════════════
-          SECTION 4 — AI SETTINGS
-          ═══════════════════════════════════════════ */}
-      <div className="bg-[#F4E9DA] rounded-2xl p-6 shadow-sm">
-        <SectionHeader icon={Bot} title="AI Settings" />
-        <div className="space-y-0">
-          <div className="flex items-center justify-between py-3 border-b border-[#ECDFC7]">
-            <div>
-              <p className="text-sm font-medium text-[#050725]">Auto Recommendations</p>
-              <p className="text-xs text-[#84848A]">Receive AI-generated budget and spending tips on dashboard</p>
-            </div>
-            <ToggleSwitch enabled={aiSettings.autoRecommendations} onToggle={() => handleAiToggle("autoRecommendations")} />
-          </div>
-          <div className="flex items-center justify-between py-3 border-b border-[#ECDFC7]">
-            <div>
-              <p className="text-sm font-medium text-[#050725]">Restock Alerts</p>
-              <p className="text-xs text-[#84848A]">AI monitors inventory and suggests when to restock</p>
-            </div>
-            <ToggleSwitch enabled={aiSettings.restockAlerts} onToggle={() => handleAiToggle("restockAlerts")} />
-          </div>
-          <div className="flex items-center justify-between py-3 border-b border-[#ECDFC7]">
-            <div>
-              <p className="text-sm font-medium text-[#050725]">Budget Warnings</p>
-              <p className="text-xs text-[#84848A]">Get notified when spending approaches your budget limit</p>
-            </div>
-            <ToggleSwitch enabled={aiSettings.budgetWarnings} onToggle={() => handleAiToggle("budgetWarnings")} />
-          </div>
-          <div className="flex items-center justify-between py-3 border-b border-[#ECDFC7]">
-            <div>
-              <p className="text-sm font-medium text-[#050725]">Sales Forecasting</p>
-              <p className="text-xs text-[#84848A]">Enable AI-powered sales predictions on analytics chart</p>
-            </div>
-            <ToggleSwitch enabled={aiSettings.salesForecasting} onToggle={() => handleAiToggle("salesForecasting")} />
-          </div>
-          <div className="flex items-center justify-between py-3">
-            <div>
-              <p className="text-sm font-medium text-[#050725]">Assistant Tone</p>
-              <p className="text-xs text-[#84848A]">How the AI assistant communicates with you</p>
-            </div>
-            <SelectDropdown value={aiSettings.assistantTone} options={["Professional", "Friendly", "Concise", "Detailed"]}
-              onChange={(val) => handleAiSelectChange("assistantTone", val)} />
-          </div>
-        </div>
-      </div>
-
-      {/* ═══════════════════════════════════════════
-          SECTION 5 — SECURITY
-          ═══════════════════════════════════════════ */}
-      <div className="bg-[#F4E9DA] rounded-2xl p-6 shadow-sm">
-        <SectionHeader icon={Shield} title="Security" />
-        <div className="space-y-4">
-          {provider !== "google.com" && (
-            <div className="flex items-center justify-between py-3 border-b border-[#ECDFC7]">
-              <div>
-                <p className="text-sm font-medium text-[#050725]">Password</p>
-                <p className="text-xs text-[#84848A]">Last changed 30 days ago</p>
+              <p className="section-eyebrow">Profile</p>
+              <h1 className="section-title">{userInfo.fullName}</h1>
+              <p className="mt-2 text-base text-[#6F6F76]">{userInfo.businessName}</p>
+              <div className="mt-3 flex flex-wrap gap-3 text-xs font-semibold uppercase tracking-[0.16em]">
+                <span className="info-pill">{providerLabel} sign-in</span>
+                <span className="info-pill text-[#6F6F76]">Member since {accountStats.memberSince}</span>
               </div>
-              <button className="text-sm text-[#F9B672] hover:text-[#e5a25e] font-medium transition-colors">
-                Change Password
-              </button>
             </div>
-          )}
+          </div>
 
-          {provider === "google.com" && (
-            <div className="flex items-center justify-between py-3 border-b border-[#ECDFC7]">
-              <div>
-                <p className="text-sm font-medium text-[#050725]">Authentication</p>
-                <p className="text-xs text-[#84848A]">Signed in via Google — password managed by Google</p>
-              </div>
-              <span className="text-xs text-[#2E6F4E] bg-[#2E6F4E]/10 px-2.5 py-1 rounded-full font-medium">Secure</span>
-            </div>
-          )}
-
-          <div className="pt-2">
+          <div className="flex flex-wrap gap-3">
             <button
+              type="button"
+              onClick={isEditing ? handleSaveProfile : handleEditToggle}
+              className={`inline-flex items-center gap-2 rounded-[20px] px-5 py-3 text-sm font-semibold transition ${
+                isEditing
+                  ? "bg-[#2E6F4E] text-white hover:bg-[#245a3f]"
+                  : "bg-[#2C2F45] text-white hover:bg-[#050725]"
+              }`}
+            >
+              {isEditing ? <Save size={16} /> : <Pencil size={16} />}
+              {isEditing ? "Save Changes" : "Edit Profile"}
+            </button>
+
+            <button
+              type="button"
               onClick={handleLogout}
-              className="flex items-center gap-2 bg-[#2C2F45] hover:bg-[#050725] text-white px-6 py-2.5 rounded-xl text-sm font-medium transition-colors"
+              className="inline-flex items-center gap-2 rounded-[20px] border border-[#2C2F45]/10 bg-white/80 px-5 py-3 text-sm font-semibold text-[#050725] transition hover:bg-white"
             >
               <LogOut size={16} />
               Logout
             </button>
+          </div>
+        </div>
+      </section>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_360px]">
+        <div className="space-y-6">
+          <div
+            ref={accountInfoRef}
+            className={`section-anchor ${focusedSection === "account-information" ? "section-focus-highlight" : ""}`}
+          >
+            <SectionCard
+              eyebrow="Account"
+              title="Personal and business information"
+              description="Keep your core account details accurate for reporting and daily use."
+              icon={User}
+            >
+              <div className="space-y-3">
+                {isEditing ? (
+                  <>
+                    <EditRow label="Full Name" fieldKey="fullName" />
+                    <EditRow label="Email" fieldKey="email" />
+                    <EditRow label="Business Name" fieldKey="businessName" />
+                    <EditRow label="Phone" fieldKey="phone" />
+                    <EditRow label="Address" fieldKey="address" />
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={handleEditToggle}
+                        className="inline-flex items-center gap-2 rounded-2xl border border-[#2C2F45]/10 bg-white/80 px-4 py-3 text-sm font-medium text-[#6F6F76] transition hover:text-[#050725]"
+                      >
+                        <X size={14} />
+                        Cancel
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <DataRow label="Full Name" value={userInfo.fullName} />
+                    <DataRow label="Email" value={userInfo.email} />
+                    <DataRow label="Business Name" value={userInfo.businessName} />
+                    <DataRow label="Phone" value={userInfo.phone} />
+                    <DataRow label="Address" value={userInfo.address} />
+                  </>
+                )}
+              </div>
+            </SectionCard>
+          </div>
+
+          <div
+            ref={financialSettingsRef}
+            className={`section-anchor ${focusedSection === "financial-settings" ? "section-focus-highlight" : ""}`}
+          >
+            <SectionCard
+              eyebrow="Preferences"
+              title="Financial settings"
+              description="Set the planning values used across the dashboard and alerts."
+              icon={Wallet}
+            >
+              <div className="space-y-3">
+                <PreferenceRow
+                  label="Currency"
+                  description="Display currency for recorded amounts"
+                  control={
+                    <SelectDropdown
+                      value={preferences.currency}
+                      options={["PHP", "USD", "EUR", "JPY", "GBP"]}
+                      onChange={(value) => handlePreferenceChange("currency", value)}
+                    />
+                  }
+                />
+                <PreferenceRow
+                  label="Monthly Budget Limit"
+                  description="Set the monthly spending cap used for planning"
+                  control={
+                    <div className="flex items-center gap-2 rounded-2xl border border-[#2C2F45]/10 bg-white px-4 py-3 text-sm font-semibold text-[#050725]">
+                      <span>P</span>
+                      <input
+                        type="number"
+                        value={preferences.monthlyBudget}
+                        onChange={(event) => handlePreferenceChange("monthlyBudget", event.target.value)}
+                        className="w-24 bg-transparent text-right outline-none"
+                      />
+                    </div>
+                  }
+                />
+                <PreferenceRow
+                  label="Savings Goal"
+                  description="Target percentage of income to set aside"
+                  control={
+                    <div className="flex items-center gap-2 rounded-2xl border border-[#2C2F45]/10 bg-white px-4 py-3 text-sm font-semibold text-[#050725]">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={preferences.savingsGoal}
+                        onChange={(event) => handlePreferenceChange("savingsGoal", event.target.value)}
+                        className="w-16 bg-transparent text-right outline-none"
+                      />
+                      <span>%</span>
+                    </div>
+                  }
+                />
+                <PreferenceRow
+                  label="Low Stock Alert Threshold"
+                  description="Inventory percentage that should trigger alerts"
+                  control={
+                    <div className="flex items-center gap-2 rounded-2xl border border-[#2C2F45]/10 bg-white px-4 py-3 text-sm font-semibold text-[#050725]">
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={preferences.alertThreshold}
+                        onChange={(event) => handlePreferenceChange("alertThreshold", event.target.value)}
+                        className="w-16 bg-transparent text-right outline-none"
+                      />
+                      <span>%</span>
+                    </div>
+                  }
+                />
+                <PreferenceRow
+                  label="Fiscal Year Start"
+                  description="Choose the first month of your operating year"
+                  control={
+                    <SelectDropdown
+                      value={preferences.fiscalYearStart}
+                      options={[
+                        "January",
+                        "February",
+                        "March",
+                        "April",
+                        "May",
+                        "June",
+                        "July",
+                        "August",
+                        "September",
+                        "October",
+                        "November",
+                        "December",
+                      ]}
+                      onChange={(value) => handlePreferenceChange("fiscalYearStart", value)}
+                    />
+                  }
+                />
+              </div>
+            </SectionCard>
+          </div>
+        </div>
+
+        <div className="space-y-6 xl:sticky xl:top-8 xl:self-start">
+          <section className="surface-card-soft px-4 py-4">
+            <div className="mb-3 flex items-center justify-between">
+              <p className="section-eyebrow">Key signals</p>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#84848A]">
+                Profile
+              </span>
+            </div>
+
+            <div className="grid gap-3">
+              {profileSignals.map((signal) => (
+                <button
+                  key={signal.label}
+                  type="button"
+                  onClick={() => focusSection(signal.focusSection)}
+                  className={`interactive-surface rounded-[18px] border px-4 py-3 text-left ${
+                    signal.tone === "accent"
+                      ? "border-[#F9B672]/20 bg-[#F9B672]/12"
+                      : signal.tone === "success"
+                      ? "border-[#2E6F4E]/12 bg-[#2E6F4E]/8"
+                      : "border-[#2C2F45]/8 bg-white/78"
+                  }`}
+                >
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#84848A]">
+                    {signal.label}
+                  </p>
+                  <p className="mt-1 text-base font-semibold text-[#050725]">{signal.value}</p>
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <SectionCard
+            eyebrow="Overview"
+            title="Account statistics"
+            description="A quick summary of the financial activity connected to this workspace."
+            icon={BarChart3}
+          >
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <StatTile icon={BarChart3} label="Total Transactions" value={accountStats.totalTransactions} />
+              <StatTile icon={TrendingUp} label="Total Income" value={accountStats.totalIncome} tone="success" />
+              <StatTile icon={TrendingDown} label="Total Expenses" value={accountStats.totalExpenses} tone="danger" />
+              <StatTile icon={PiggyBank} label="Inventory Items" value={accountStats.inventoryItems} tone="accent" />
+            </div>
+          </SectionCard>
+
+          <div
+            ref={assistantSecurityRef}
+            className={`section-anchor ${focusedSection === "assistant-security" ? "section-focus-highlight" : ""}`}
+          >
+            <SectionCard
+              eyebrow="Workspace"
+              title="Assistant and security"
+              description={null}
+              icon={Shield}
+            >
+              <div className="space-y-3">
+                <CompactRow
+                  label="Auto Recommendations"
+                  control={<ToggleSwitch enabled={aiSettings.autoRecommendations} onToggle={() => handleAiToggle("autoRecommendations")} />}
+                />
+                <CompactRow
+                  label="Restock Alerts"
+                  control={<ToggleSwitch enabled={aiSettings.restockAlerts} onToggle={() => handleAiToggle("restockAlerts")} />}
+                />
+                <CompactRow
+                  label="Budget Warnings"
+                  control={<ToggleSwitch enabled={aiSettings.budgetWarnings} onToggle={() => handleAiToggle("budgetWarnings")} />}
+                />
+                <CompactRow
+                  label="Sales Forecasting"
+                  control={<ToggleSwitch enabled={aiSettings.salesForecasting} onToggle={() => handleAiToggle("salesForecasting")} />}
+                />
+                <CompactRow
+                  label="Assistant Tone"
+                  control={
+                    <SelectDropdown
+                      value={aiSettings.assistantTone}
+                      options={["Professional", "Friendly", "Concise", "Detailed"]}
+                      onChange={(value) => handleAiSelectChange("assistantTone", value)}
+                    />
+                  }
+                />
+                <CompactRow label="Sign-In Method" value={providerLabel} />
+                <CompactRow
+                  label="Authentication"
+                  value={provider === "google.com" ? "Google managed" : "Password protected"}
+                />
+              </div>
+            </SectionCard>
           </div>
         </div>
       </div>

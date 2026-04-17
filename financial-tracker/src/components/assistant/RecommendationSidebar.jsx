@@ -1,18 +1,18 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
+  AlertTriangle,
+  BarChart3,
+  Loader2,
+  PiggyBank,
+  RefreshCcw,
   Sparkles,
   TrendingUp,
   Wallet,
-  AlertTriangle,
-  PiggyBank,
-  BarChart3,
-  RefreshCcw,
-  Loader2,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { getRecommendations } from "../../services/geminiService";
 
-/* Map recommendation type to icon */
-const ICON_MAP = {
+const iconMap = {
   budget: Wallet,
   sales: TrendingUp,
   inventory: AlertTriangle,
@@ -20,138 +20,127 @@ const ICON_MAP = {
   alert: AlertTriangle,
 };
 
-/* Fallback recommendations if AI fails */
-const FALLBACK_RECS = [
-  {
-    title: "Budget Allocation",
-    text: "Prioritize essential expenses first — aim for 50–60% necessities and 20–30% savings.",
-    type: "budget",
-  },
-  {
-    title: "Monitor Low Stock",
-    text: "Check your inventory regularly to avoid running out of high-demand products.",
-    type: "inventory",
-  },
-  {
-    title: "Emergency Fund",
-    text: "Set aside 10% of your balance as an emergency fund before discretionary spending.",
-    type: "savings",
-  },
-  {
-    title: "Track Expenses",
-    text: "Log all transactions daily to maintain accurate financial records.",
-    type: "budget",
-  },
-  {
-    title: "Sales Analysis",
-    text: "Review your best-selling products weekly and adjust stock levels accordingly.",
-    type: "sales",
-  },
-];
-
 function RecommendationSidebar() {
-  const [recommendations, setRecommendations] = useState(FALLBACK_RECS);
+  const navigate = useNavigate();
+  const [recommendations, setRecommendations] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
 
-  const fetchRecs = async () => {
+  const fetchRecommendations = async () => {
     setIsLoading(true);
     try {
-      const recs = await getRecommendations();
-      if (recs && recs.length > 0) {
-        setRecommendations(recs);
-        setLastUpdated(
-          new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          })
-        );
-      }
-    } catch (err) {
-      console.error("Failed to load recommendations:", err);
+      const response = await getRecommendations();
+      setRecommendations(Array.isArray(response) ? response : []);
+      setLastUpdated(
+        new Date().toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })
+      );
+    } catch (error) {
+      console.error("Failed to load recommendations:", error);
+      setRecommendations([]);
     }
     setIsLoading(false);
   };
 
   useEffect(() => {
-    fetchRecs();
+    fetchRecommendations();
   }, []);
 
+  const handleRecommendationClick = (recommendation) => {
+    let destination = "/dashboard#business-pulse";
+    let focusSection = "business-pulse";
+
+    if (recommendation.type === "inventory" || recommendation.type === "alert") {
+      destination = "/calendar#restock-panel";
+      focusSection = "restock-panel";
+    } else if (recommendation.type === "budget") {
+      destination = "/dashboard#budget-outlook";
+      focusSection = "budget-outlook";
+    } else if (recommendation.type === "savings") {
+      destination = "/profile#financial-settings";
+      focusSection = "financial-settings";
+    }
+
+    navigate(destination, {
+      state: {
+        focusSection,
+        focusNonce: Date.now(),
+      },
+    });
+  };
+
   return (
-    <div className="bg-surface rounded-2xl p-5 shadow-sm h-full">
-      {/* HEADER */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Sparkles size={16} className="text-accent" />
-          <h3 className="font-semibold text-primary">Recommendations</h3>
+    <section className="surface-panel surface-panel-pad xl:flex xl:max-h-[calc(100vh-10rem)] xl:flex-col xl:overflow-hidden">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <p className="section-eyebrow">AI recommendations</p>
+          <h3 className="section-subtitle">Live decision support</h3>
+          <p className="section-copy">
+            Refresh this panel anytime to pull the latest budget, sales, and inventory suggestions.
+          </p>
         </div>
 
         <button
-          onClick={fetchRecs}
+          type="button"
+          onClick={fetchRecommendations}
           disabled={isLoading}
-          className="p-1.5 rounded-lg hover:bg-[#ECDFC7] transition-colors disabled:opacity-50"
+          className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#2C2F45]/10 bg-white/70 text-[#2C2F45] transition hover:bg-white disabled:opacity-50"
           title="Refresh recommendations"
         >
-          {isLoading ? (
-            <Loader2 size={14} className="text-neutral animate-spin" />
-          ) : (
-            <RefreshCcw
-              size={14}
-              className="text-neutral hover:text-primary transition"
-            />
-          )}
+          {isLoading ? <Loader2 size={16} className="animate-spin" /> : <RefreshCcw size={16} />}
         </button>
       </div>
 
-      {/* Last updated */}
-      {lastUpdated && (
-        <p className="text-[10px] text-neutral mb-3">
-          AI-generated • Updated {lastUpdated}
-        </p>
-      )}
+      <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-[#2C2F45]/10 bg-white/70 px-4 py-2 text-xs font-medium text-[#6F6F76]">
+        <Sparkles size={13} className="text-[#F9B672]" />
+        {lastUpdated ? `Updated ${lastUpdated}` : "Waiting for first refresh"}
+      </div>
 
-      {/* LIST */}
-      <div className="flex flex-col gap-4">
+      <div className="mt-6 space-y-3 xl:flex-1 xl:overflow-y-auto xl:pr-1">
         {isLoading ? (
-          // Loading skeleton
-          <>
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="border-b border-neutral/20 pb-4 last:border-0">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-3.5 h-3.5 bg-[#ECDFC7] rounded animate-pulse" />
-                  <div className="h-3.5 bg-[#ECDFC7] rounded w-28 animate-pulse" />
-                </div>
-                <div className="space-y-1.5">
-                  <div className="h-3 bg-[#ECDFC7] rounded w-full animate-pulse" />
-                  <div className="h-3 bg-[#ECDFC7] rounded w-3/4 animate-pulse" />
-                </div>
-              </div>
-            ))}
-          </>
+          Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="animate-pulse rounded-[24px] border border-[#2C2F45]/8 bg-white/70 px-4 py-4">
+              <div className="h-4 w-32 rounded bg-[#2C2F45]/10" />
+              <div className="mt-3 h-3 w-full rounded bg-[#2C2F45]/8" />
+              <div className="mt-2 h-3 w-4/5 rounded bg-[#2C2F45]/8" />
+            </div>
+          ))
+        ) : recommendations.length === 0 ? (
+          <div className="rounded-[24px] border border-dashed border-[#2C2F45]/12 bg-white/45 px-5 py-8 text-center">
+            <BarChart3 size={22} className="mx-auto text-[#F9B672]" />
+            <p className="mt-4 text-sm font-semibold text-[#050725]">No recommendations available yet</p>
+            <p className="mt-2 text-sm leading-6 text-[#6F6F76]">
+              Add more financial activity so the assistant can generate stronger insights for Gerald Retail.
+            </p>
+          </div>
         ) : (
-          recommendations.map((rec, idx) => {
-            const Icon = ICON_MAP[rec.type] || BarChart3;
+          recommendations.map((recommendation, index) => {
+            const Icon = iconMap[recommendation.type] || BarChart3;
 
             return (
-              <div
-                key={idx}
-                className="border-b border-neutral/20 pb-4 last:border-0"
+              <button
+                key={`${recommendation.title}-${index}`}
+                type="button"
+                onClick={() => handleRecommendationClick(recommendation)}
+                className="interactive-surface w-full rounded-[24px] border border-[#2C2F45]/8 bg-white/75 px-4 py-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] hover:border-[#F9B672]/25"
               >
-                <div className="flex items-center gap-2 mb-1">
-                  <Icon size={14} className="text-accent shrink-0" />
-                  <p className="text-sm font-semibold text-primary">
-                    {rec.title}
-                  </p>
+                <div className="flex items-start gap-3">
+                  <div className="mt-0.5 flex h-10 w-10 items-center justify-center rounded-2xl bg-[#2C2F45] text-[#F9B672]">
+                    <Icon size={16} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-[#050725]">{recommendation.title}</p>
+                    <p className="mt-2 text-sm leading-6 text-[#6F6F76]">{recommendation.text}</p>
+                  </div>
                 </div>
-                <p className="text-xs text-neutral leading-relaxed">
-                  {rec.text}
-                </p>
-              </div>
+              </button>
             );
           })
         )}
       </div>
-    </div>
+    </section>
   );
 }
 

@@ -1,20 +1,20 @@
-import { useState, useRef, useEffect } from "react";
-import { Search, Bot } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Bot, MessageSquareText, Search } from "lucide-react";
 
-import ChatMessage from "../components/assistant/ChatMessage";
-import TypingIndicator from "../components/assistant/TypingIndicator";
 import ChatInput from "../components/assistant/ChatInput";
+import ChatMessage from "../components/assistant/ChatMessage";
 import RecommendationSidebar from "../components/assistant/RecommendationSidebar";
-
+import TypingIndicator from "../components/assistant/TypingIndicator";
+import useSectionFocus from "../hooks/useSectionFocus";
 import { sendMessage } from "../services/geminiService";
 
 const INITIAL_MESSAGE = {
   id: 1,
   role: "assistant",
   content:
-    "Hello! I am your Financial Assistant 👋\n\n" +
-    "I can help you analyze expenses, suggest restocks, track budgets, and give predictions.\n\n" +
-    "How can I assist you today?",
+    "Hello. I am your Financial Assistant for Gerald Retail.\n\n" +
+    "I can help you analyze expenses, suggest restocks, review income sources, and support budget planning using your recorded data.\n\n" +
+    "What would you like to review today?",
   timestamp: new Date().toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
@@ -27,10 +27,22 @@ function Assistant() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const bottomRef = useRef(null);
+  const conversationRef = useRef(null);
+  const recommendationsRef = useRef(null);
+
+  const sectionRefs = useMemo(
+    () => ({
+      "conversation-panel": conversationRef,
+      "ai-recommendations": recommendationsRef,
+    }),
+    []
+  );
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isLoading]);
+
+  const focusedSection = useSectionFocus(sectionRefs, { delay: 100 });
 
   const handleSend = async (text) => {
     const userMessage = {
@@ -43,18 +55,16 @@ function Assistant() {
       }),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    setMessages((previousMessages) => [...previousMessages, userMessage]);
     setIsLoading(true);
 
-    // Build conversation history (exclude initial greeting)
     const history = messages
-      .filter((m) => m.id !== 1)
-      .map((m) => ({
-        role: m.role,
-        content: m.content,
+      .filter((message) => message.id !== INITIAL_MESSAGE.id)
+      .map((message) => ({
+        role: message.role,
+        content: message.content,
       }));
 
-    // Send with history so Gemini has conversation context
     const responseText = await sendMessage(text, history);
 
     const assistantMessage = {
@@ -67,77 +77,99 @@ function Assistant() {
       }),
     };
 
-    setMessages((prev) => [...prev, assistantMessage]);
+    setMessages((previousMessages) => [...previousMessages, assistantMessage]);
     setIsLoading(false);
   };
 
   const filteredMessages = searchQuery
-    ? messages.filter((m) =>
-        m.content.toLowerCase().includes(searchQuery.toLowerCase())
+    ? messages.filter((message) =>
+        message.content.toLowerCase().includes(searchQuery.toLowerCase())
       )
     : messages;
 
   return (
-    <div className="max-w-6xl mx-auto animate-fade-in">
-      <div className="grid grid-cols-3 gap-6 h-[calc(100vh-6rem)]">
-        {/* CHAT AREA */}
-        <div className="col-span-2 bg-surface rounded-2xl shadow-sm flex flex-col overflow-hidden">
-          {/* HEADER */}
-          <div className="flex items-center justify-between px-6 py-4 border-b border-neutral/20">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 bg-primary rounded-xl flex items-center justify-center">
-                <Bot size={18} className="text-white" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-primary">
-                  Financial Assistant
-                </p>
-                <div className="flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                  <span className="text-[11px] text-neutral">
-                    Online • Powered by Gemini AI
-                  </span>
-                </div>
-              </div>
+    <div className="page-stack">
+      <section className="surface-panel surface-panel-pad">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="icon-chip">
+              <Bot size={20} />
             </div>
-
-            {/* SEARCH */}
-            <div className="flex items-center gap-2 bg-background rounded-xl px-3 py-2 border border-neutral/20 w-48">
-              <Search size={13} className="text-neutral shrink-0" />
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search chat..."
-                className="flex-1 text-xs bg-transparent focus:outline-none text-primary placeholder:text-neutral"
-              />
+            <div className="max-w-3xl">
+              <p className="section-eyebrow">Assistant</p>
+              <h1 className="section-title">Financial conversation</h1>
+              <p className="section-copy">
+                Ask about balances, expenses, restocks, and financial patterns using your recorded data.
+              </p>
             </div>
           </div>
 
-          {/* CHAT MESSAGES */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 flex flex-col gap-4">
-            {filteredMessages.map((message) => (
-              <ChatMessage key={message.id} message={message} />
-            ))}
-
-            {isLoading && <TypingIndicator />}
-
-            <div ref={bottomRef} />
-          </div>
-
-          {/* CHAT INPUT */}
-          <div className="px-6 py-4 border-t border-neutral/20">
-            <ChatInput
-              onSend={handleSend}
-              isLoading={isLoading}
-              showSuggestions={messages.length <= 1}
+          <div className="surface-card flex w-full items-center gap-2 px-4 py-3 xl:w-72">
+            <Search size={14} className="shrink-0 text-[#84848A]" />
+            <input
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Search this conversation"
+              className="flex-1 bg-transparent text-sm text-[#050725] outline-none placeholder:text-[#84848A]"
             />
           </div>
         </div>
+      </section>
 
-        {/* RECOMMENDATION SIDEBAR */}
-        <div className="overflow-y-auto">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.55fr)_340px]">
+        <section
+          ref={conversationRef}
+          className={`surface-panel section-anchor overflow-hidden ${
+            focusedSection === "conversation-panel" ? "section-focus-highlight" : ""
+          }`}
+        >
+          <div className="flex items-center gap-3 border-b border-[#2C2F45]/8 px-6 py-4 text-xs uppercase tracking-[0.16em] text-[#84848A]">
+            <MessageSquareText size={14} className="text-[#F9B672]" />
+            {searchQuery
+              ? `${filteredMessages.length} matching message${filteredMessages.length === 1 ? "" : "s"}`
+              : "Conversation history"}
+          </div>
+
+          <div className="flex min-h-[440px] flex-col sm:min-h-[520px] xl:h-[calc(100vh-13rem)] xl:max-h-[860px]">
+            <div className="flex-1 overflow-y-auto px-6 py-5">
+              {filteredMessages.length === 0 ? (
+                <div className="flex h-full flex-col items-center justify-center rounded-[24px] border border-dashed border-[#2C2F45]/12 bg-white/40 px-6 text-center">
+                  <Search size={24} className="text-[#F9B672]" />
+                  <p className="mt-4 text-sm font-semibold text-[#050725]">No message matches your search</p>
+                  <p className="mt-2 max-w-sm text-sm leading-6 text-[#6F6F76]">
+                    Try a different keyword or clear the search field to continue the full conversation.
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-4">
+                  {filteredMessages.map((message) => (
+                    <ChatMessage key={message.id} message={message} />
+                  ))}
+
+                  {isLoading && <TypingIndicator />}
+                  <div ref={bottomRef} />
+                </div>
+              )}
+            </div>
+
+            <div className="border-t border-[#2C2F45]/10 px-6 py-4">
+              <ChatInput
+                onSend={handleSend}
+                isLoading={isLoading}
+                showSuggestions={messages.length <= 1}
+              />
+            </div>
+          </div>
+        </section>
+
+        <aside
+          ref={recommendationsRef}
+          className={`section-anchor xl:sticky xl:top-8 xl:self-start ${
+            focusedSection === "ai-recommendations" ? "section-focus-highlight" : ""
+          }`}
+        >
           <RecommendationSidebar />
-        </div>
+        </aside>
       </div>
     </div>
   );

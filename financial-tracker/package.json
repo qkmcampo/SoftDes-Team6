@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test:sendMessage": "node --experimental-vm-modules ./node_modules/jest/bin/jest.js src/__tests__/sendMessage.mock.test.js --runInBand"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

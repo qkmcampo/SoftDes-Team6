@@ -1,211 +1,321 @@
 import {
-  Users,
   BookOpen,
-  LayoutDashboard,
-  CalendarDays,
   Bot,
-  UserCircle,
-  Package,
-  TrendingUp,
-  Shield,
-  Crown,
-  Cpu,
   BrainCircuit,
+  CalendarDays,
+  Cpu,
+  LayoutDashboard,
   Network,
+  Package,
+  Shield,
+  TrendingUp,
+  UserCircle,
+  Users,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import BrandLogo from "../components/shared/BrandLogo";
 
-// ── Team Data ──
-const TEAM_MEMBERS = [
-  { name: "Keneth Campo", role: "Leader", track: "System Administration", color: "#F9B672", initials: "KC", photo: "/team/Keneth_Campo.jpg" },
-  { name: "Angelo Base", role: "Member", track: "Data Science", color: "#2E6F4E", initials: "AB", photo: "/team/Angelo_Base.jpg" },
-  { name: "Gwyneth Esperat", role: "Member", track: "Data Science", color: "#2C2F45", initials: "GE", photo: "/team/Gwyneth_Esperat.jpg" },
-  { name: "Pamela Malazarte", role: "Member", track: "Cyber Physical System", color: "#84848A", initials: "PM", photo: "/team/Pamela_Malazarte.jpg" },
-  { name: "Maynard Refugia", role: "Member", track: "Cyber Physical System", color: "#050725", initials: "MR", photo: null },
+const teamMembers = [
+  {
+    name: "Keneth Campo",
+    role: "Leader",
+    track: "System Administration",
+    color: "#F9B672",
+    initials: "KC",
+    photo: "/team/Keneth_Campo.jpg",
+  },
+  {
+    name: "Angelo Base",
+    role: "Member",
+    track: "Data Science",
+    color: "#2E6F4E",
+    initials: "AB",
+    photo: "/team/Angelo_Base.jpg",
+  },
+  {
+    name: "Gwyneth Esperat",
+    role: "Member",
+    track: "Data Science",
+    color: "#2C2F45",
+    initials: "GE",
+    photo: "/team/Gwyneth_Esperat.jpg",
+  },
+  {
+    name: "Pamela Malazarte",
+    role: "Member",
+    track: "Cyber Physical System",
+    color: "#84848A",
+    initials: "PM",
+    photo: "/team/Pamela_Malazarte.jpg",
+  },
+  {
+    name: "Maynard Refugia",
+    role: "Member",
+    track: "Cyber Physical System",
+    color: "#050725",
+    initials: "MR",
+    photo: null,
+  },
 ];
 
-// ── App Features ──
-const APP_FEATURES = [
-  { icon: LayoutDashboard, title: "Dashboard", description: "View your wallet balance, budget predictions, sales analytics chart, and recent transactions all in one place." },
-  { icon: CalendarDays, title: "Calendar", description: "Plan bills payments, supplier deliveries, and restock schedules. Switch between Week, Month, and Agenda views." },
-  { icon: Bot, title: "AI Assistant", description: "Chat with our Gemini-powered assistant for expense analysis, restock suggestions, savings advice, and financial predictions." },
-  { icon: UserCircle, title: "Profile", description: "Manage your account info, financial preferences, AI settings, and security. Supports Google Sign-In." },
-  { icon: Package, title: "Inventory Management", description: "Track stock levels with automatic LOW and CRITICAL alerts. Restock items individually or all at once." },
-  { icon: TrendingUp, title: "Budget Prediction", description: "Machine learning-powered sales forecasting to help you plan your monthly budget based on historical data." },
+const appFeatures = [
+  {
+    icon: LayoutDashboard,
+    title: "Dashboard",
+    description: "Track balance, analytics, predictions, and recent transactions in one clear workspace.",
+    link: "/dashboard#analytics-section",
+    focusSection: "analytics-section",
+  },
+  {
+    icon: CalendarDays,
+    title: "Calendar",
+    description: "Plan bills, supplier tasks, and restock schedules through focused calendar views.",
+    link: "/calendar#agenda-panel",
+    focusSection: "agenda-panel",
+  },
+  {
+    icon: Bot,
+    title: "AI Assistant",
+    description: "Ask practical questions about expenses, restocks, savings, and financial patterns.",
+    link: "/assistant#conversation-panel",
+    focusSection: "conversation-panel",
+  },
+  {
+    icon: UserCircle,
+    title: "Profile",
+    description: "Manage account details, preferences, security, and assistant behavior in one place.",
+    link: "/profile#financial-settings",
+    focusSection: "financial-settings",
+  },
+  {
+    icon: Package,
+    title: "Inventory Monitoring",
+    description: "Surface LOW and CRITICAL stock conditions and respond with clear restock actions.",
+    link: "/calendar#restock-panel",
+    focusSection: "restock-panel",
+  },
+  {
+    icon: TrendingUp,
+    title: "Budget Prediction",
+    description: "Use forecasting to guide monthly planning from recent store activity and sales history.",
+    link: "/dashboard#budget-outlook",
+    focusSection: "budget-outlook",
+  },
 ];
 
-// ── Quick Start Steps ──
-const QUICK_STEPS = [
-  "Login with your Google account or use the demo account (admin@email.com / admin123).",
-  "Add your transactions on the Dashboard to track income and expenses.",
-  "Check the Calendar for upcoming bills, deliveries, and restock reminders.",
-  "Ask the AI Assistant anything about your finances — it reads your real data.",
-  "Monitor inventory in the Restock Panel and add new items as needed.",
-  "Review your Profile settings to customize budget limits and AI preferences.",
+const quickSteps = [
+  "Sign in using your email account or Google access.",
+  "Record income and expense transactions from the dashboard.",
+  "Use Calendar to review schedules, reminders, and restock timing.",
+  "Ask the Assistant for budget analysis, low-stock checks, and summaries.",
+  "Review Profile settings to keep business details and planning targets updated.",
 ];
 
 function AboutSection() {
+  const navigate = useNavigate();
+  const leader = teamMembers.find((member) => member.role === "Leader");
+  const contributors = teamMembers.filter((member) => member.role !== "Leader");
+
   return (
-    <div className="max-w-4xl mx-auto p-8 space-y-6">
+    <div className="page-stack">
+      <section className="surface-panel surface-panel-pad">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex items-start gap-4">
+            <div className="icon-chip h-14 w-14 rounded-[20px]">
+              <BrandLogo className="h-8 w-8" primary="#F4E9DA" accent="#F9B672" title="Financial Tracker logo" />
+            </div>
+            <div className="max-w-3xl">
+              <p className="section-eyebrow">About</p>
+              <h1 className="section-title">Financial Tracker</h1>
+              <p className="section-copy">
+                A financial workspace for Gerald Retail with budgeting, planning, inventory awareness, and assistant guidance.
+              </p>
+            </div>
+          </div>
 
-      {/* ═══════════════════════════════════════════
-          ABOUT HEADER
-          ═══════════════════════════════════════════ */}
-      <div className="bg-[#2C2F45] rounded-2xl p-8 shadow-sm text-center">
-        <div className="w-16 h-16 bg-[#F9B672] rounded-2xl flex items-center justify-center mx-auto mb-4">
-          <span className="text-2xl font-bold text-[#050725]">₱</span>
+          <div className="flex flex-wrap gap-3 text-xs font-semibold uppercase tracking-[0.16em]">
+            <span className="info-pill">Version 1.0</span>
+            <span className="info-pill text-[#6F6F76]">Software Design</span>
+            <span className="info-pill text-[#6F6F76]">2025-2026</span>
+          </div>
         </div>
-        <h1 className="text-2xl font-bold text-white mb-2">
-          Financial Tracker
-        </h1>
-        <p className="text-sm text-gray-400">
-          Budget Prediction System for Small Retail Businesses
-        </p>
-        <p className="text-xs text-gray-500 mt-2">
-          Version 1.0 • Software Design Project • 2025–2026
-        </p>
-      </div>
+      </section>
 
-      {/* ═══════════════════════════════════════════
-          HOW TO USE
-          ═══════════════════════════════════════════ */}
-      <div className="bg-[#F4E9DA] rounded-2xl p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-5">
-          <BookOpen size={18} className="text-[#F9B672]" />
-          <h3 className="text-[#050725] font-semibold">How to Use</h3>
-        </div>
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_340px]">
+        <section className="surface-panel surface-panel-pad">
+          <div className="flex items-start gap-3">
+            <div className="icon-chip h-10 w-10">
+              <BookOpen size={17} />
+            </div>
+            <div>
+              <p className="section-eyebrow">Overview</p>
+              <h2 className="section-subtitle">What the system helps you manage</h2>
+              <p className="section-copy">
+                The platform is designed to make daily store decisions easier to read, track, and explain.
+              </p>
+            </div>
+          </div>
 
-        <p className="text-sm text-[#84848A] mb-5 leading-relaxed">
-          Financial Tracker is a SaaS dashboard designed for small retail businesses to track expenses,
-          predict budgets, manage inventory, and get AI-powered financial advice. Here's what each feature does:
-        </p>
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {appFeatures.map((feature) => {
+              const Icon = feature.icon;
+              return (
+                <button
+                  key={feature.title}
+                  type="button"
+                  onClick={() =>
+                    navigate(feature.link, {
+                      state: {
+                        focusSection: feature.focusSection,
+                        focusNonce: Date.now(),
+                      },
+                    })
+                  }
+                  className="surface-card interactive-surface px-4 py-4 text-left hover:border-[#F9B672]/25"
+                >
+                  <div className="icon-chip h-10 w-10">
+                    <Icon size={17} />
+                  </div>
+                  <h3 className="mt-4 text-lg font-semibold text-[#050725]">{feature.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-[#6F6F76]">{feature.description}</p>
+                </button>
+              );
+            })}
+          </div>
+        </section>
 
-        {/* Feature Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-          {APP_FEATURES.map((feature) => {
-            const Icon = feature.icon;
-            return (
-              <div key={feature.title} className="flex gap-3 p-4 bg-[#ECDFC7]/50 rounded-xl">
-                <div className="w-10 h-10 rounded-lg bg-[#2C2F45] flex items-center justify-center shrink-0">
-                  <Icon size={18} className="text-white" />
+        <section className="surface-panel surface-panel-pad">
+          <div className="flex items-start gap-3">
+            <div className="icon-chip h-10 w-10">
+              <Shield size={17} />
+            </div>
+            <div>
+              <p className="section-eyebrow">Quick start</p>
+              <h2 className="section-subtitle">How to begin using the system</h2>
+            </div>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {quickSteps.map((step, index) => (
+              <div key={step} className="surface-card flex items-start gap-3 px-4 py-4">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#F9B672] text-xs font-bold text-[#050725]">
+                  {index + 1}
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-[#050725]">{feature.title}</p>
-                  <p className="text-xs text-[#84848A] leading-relaxed mt-0.5">{feature.description}</p>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Quick Start */}
-        <div className="p-5 bg-[#2C2F45] rounded-xl">
-          <p className="text-sm font-semibold text-white mb-4">Quick Start Guide</p>
-          <div className="space-y-3">
-            {QUICK_STEPS.map((step, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <span className="w-6 h-6 rounded-full bg-[#F9B672] flex items-center justify-center shrink-0 mt-0.5">
-                  <span className="text-[11px] font-bold text-[#050725]">{i + 1}</span>
-                </span>
-                <p className="text-xs text-gray-300 leading-relaxed">{step}</p>
+                <p className="text-sm leading-6 text-[#6F6F76]">{step}</p>
               </div>
             ))}
           </div>
-        </div>
+        </section>
       </div>
 
-      {/* ═══════════════════════════════════════════
-          MEET THE TEAM
-          ═══════════════════════════════════════════ */}
-      <div className="bg-[#F4E9DA] rounded-2xl p-6 shadow-sm">
-        <div className="flex items-center gap-2 mb-2">
-          <Users size={18} className="text-[#F9B672]" />
-          <h3 className="text-[#050725] font-semibold">Meet the Team</h3>
+      <section className="surface-panel surface-panel-pad">
+        <div className="flex items-start gap-3">
+          <div className="icon-chip h-10 w-10">
+            <Users size={17} />
+          </div>
+          <div>
+            <p className="section-eyebrow">Team</p>
+            <h2 className="section-subtitle">Meet the development group</h2>
+            <p className="section-copy">
+              Bachelor of Science in Computer Engineering, Technological Institute of the Philippines.
+            </p>
+          </div>
         </div>
 
-        <p className="text-sm text-[#84848A] mb-6">
-          Bachelor of Science in Computer Engineering • Technological Institute of the Philippines
-        </p>
-
-        {/* Team List */}
-        <div className="space-y-3">
-          {TEAM_MEMBERS.map((member) => {
-            const isLeader = member.role === "Leader";
-            const TrackIcon =
-              member.track === "System Administration" ? Shield
-              : member.track === "Data Science" ? BrainCircuit
-              : Network;
-
-            return (
-              <div
-                key={member.name}
-                className={`flex items-center gap-4 p-4 rounded-xl transition-colors ${
-                  isLeader ? "bg-[#2C2F45]" : "bg-[#ECDFC7]/50"
-                }`}
-              >
-                {/* Avatar — real photo or initials fallback */}
-                {member.photo ? (
+        <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+          {leader ? (
+            <article className="rounded-[24px] border border-[#2C2F45] bg-[#2C2F45] px-5 py-5 text-white shadow-[0_18px_40px_rgba(5,7,37,0.12)]">
+              <p className="section-eyebrow text-[#F9B672]">Leader spotlight</p>
+              <div className="mt-4 flex items-start gap-4">
+                {leader.photo ? (
                   <img
-                    src={member.photo}
-                    alt={member.name}
-                    className="w-14 h-14 rounded-xl object-cover shadow-sm shrink-0"
+                    src={leader.photo}
+                    alt={leader.name}
+                    loading="eager"
+                    decoding="async"
+                    fetchPriority="high"
+                    className="h-20 w-20 rounded-[24px] object-cover shadow-[0_12px_24px_rgba(0,0,0,0.16)]"
                   />
                 ) : (
                   <div
-                    className="w-14 h-14 rounded-xl flex items-center justify-center shrink-0 shadow-sm"
-                    style={{ backgroundColor: isLeader ? "#F9B672" : member.color + "20" }}
+                    className="flex h-20 w-20 items-center justify-center rounded-[24px] text-xl font-bold"
+                    style={{ backgroundColor: "#F9B672", color: "#050725" }}
                   >
-                    <span
-                      className="text-sm font-bold"
-                      style={{ color: isLeader ? "#050725" : member.color }}
-                    >
-                      {member.initials}
-                    </span>
+                    {leader.initials}
                   </div>
                 )}
 
-                {/* Info */}
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className={`text-sm font-semibold ${isLeader ? "text-white" : "text-[#050725]"}`}>
-                      {member.name}
-                    </p>
-                    {isLeader && (
-                      <span className="flex items-center gap-1 text-[10px] font-bold text-[#F9B672] bg-[#F9B672]/15 px-2 py-0.5 rounded-full">
-                        <Crown size={10} />
-                        LEADER
-                      </span>
+                <div>
+                  <h3 className="text-2xl font-semibold">{leader.name}</h3>
+                  <p className="mt-2 text-sm text-white/70">{leader.track}</p>
+                  <p className="mt-4 text-sm leading-7 text-white/72">
+                    Leads the project direction and helps keep the system aligned across financial tracking, planning, and presentation quality.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#F9B672]">
+                <Shield size={12} />
+                Project lead
+              </div>
+            </article>
+          ) : null}
+
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {contributors.map((member) => {
+            const isLeader = member.role === "Leader";
+            const TrackIcon =
+              member.track === "System Administration"
+                ? Shield
+                : member.track === "Data Science"
+                ? BrainCircuit
+                : Network;
+
+              return (
+                <div
+                  key={member.name}
+                  className={`rounded-[20px] border px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] ${
+                    isLeader
+                      ? "border-[#2C2F45] bg-[#2C2F45] text-white"
+                      : "border-[#2C2F45]/8 bg-white/75 text-[#050725]"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    {member.photo ? (
+                      <img
+                        src={member.photo}
+                        alt={member.name}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-14 w-14 rounded-2xl object-cover shadow-[0_12px_24px_rgba(0,0,0,0.12)]"
+                      />
+                    ) : (
+                      <div
+                        className="flex h-14 w-14 items-center justify-center rounded-2xl text-sm font-bold"
+                        style={{ backgroundColor: isLeader ? "#F9B672" : `${member.color}18`, color: isLeader ? "#050725" : member.color }}
+                      >
+                        {member.initials}
+                      </div>
                     )}
                   </div>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <TrackIcon size={11} className={isLeader ? "text-gray-400" : "text-[#84848A]"} />
-                    <p className={`text-xs ${isLeader ? "text-gray-400" : "text-[#84848A]"}`}>
-                      {member.track}
-                    </p>
+
+                  <h3 className={`mt-4 text-lg font-semibold ${isLeader ? "text-white" : "text-[#050725]"}`}>
+                    {member.name}
+                  </h3>
+                  <div className="mt-2 flex items-center gap-2 text-sm">
+                    <TrackIcon size={14} className={isLeader ? "text-white/65" : "text-[#84848A]"} />
+                    <span className={isLeader ? "text-white/70" : "text-[#6F6F76]"}>{member.track}</span>
+                  </div>
+                  <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-[#ECDFC7] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#6F6F76]">
+                    <Cpu size={10} />
+                    CPE
                   </div>
                 </div>
-
-                {/* Program badge */}
-                <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${
-                  isLeader ? "bg-white/10 text-gray-300" : "bg-[#ECDFC7] text-[#84848A]"
-                }`}>
-                  <Cpu size={10} className="inline mr-1 -mt-0.5" />
-                  CPE
-                </span>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
-
-        {/* Footer */}
-        <div className="mt-6 pt-4 border-t border-[#ECDFC7] text-center">
-          <p className="text-xs text-[#84848A]">
-            Software Design • Group 6 • A.Y. 2025–2026
-          </p>
-          <p className="text-[10px] text-[#84848A]/60 mt-1">
-            Financial Tracker with Budget Prediction
-          </p>
-        </div>
-      </div>
+      </section>
     </div>
   );
 }

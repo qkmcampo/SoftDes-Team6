@@ -1,31 +1,8 @@
-# ── Web Framework ──
 flask==3.0.3
 flask-cors==4.0.1
-gunicorn==23.0.0
-
-# ── Environment Variables ──
 python-dotenv==1.0.1
-
-# ── Database ──
-# (SQLite is built-in)
-
-# ── Machine Learning — Core ──
+requests==2.32.3
 numpy==1.26.4
 scikit-learn==1.4.2
-# h5py is REQUIRED to load the .h5 model files we created
-h5py==3.11.0 
-
-# ── Machine Learning — Deep Learning ──
-# Note: 2.16.1 includes Keras 3, which required our "FixedLayer" surgery
-tensorflow==2.16.1
-
-# ── Machine Learning — Time Series ──
-statsmodels==0.14.2
-pmdarima==2.0.4
-
-# ── HTTP Requests & AI ──
-requests==2.32.3
-google-generativeai==0.5.4
-
-# ── Data Handling ──
-pandas==2.2.2
+psycopg[binary]==3.2.9
+gunicorn==23.0.0

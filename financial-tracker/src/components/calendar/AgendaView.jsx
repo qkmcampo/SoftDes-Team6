@@ -1,152 +1,120 @@
-import { useNavigate } from "react-router-dom"
-import {
-  Receipt,
-  ShoppingCart,
-  Tag,
-  AlertTriangle,
-  CalendarDays,
-  Truck,
-  BarChart3,
-  Clock,
-} from "lucide-react"
+import { useNavigate } from "react-router-dom";
+import { CalendarDays, Clock3, Loader2 } from "lucide-react";
 
-const AGENDA_DATA = [
-  {
-    date: "2026-03-02",
-    dateLabel: "Monday, March 2",
-    events: [
-      { time: "9:00 AM", label: "Monthly Bills Payment", icon: Receipt, color: "bg-[#2C2F45] text-white", link: "/assistant" },
-    ],
-  },
-  {
-    date: "2026-03-04",
-    dateLabel: "Wednesday, March 4",
-    events: [
-      { time: "All Day", label: "LOW stock Cooking Oil — Restock recommended", icon: AlertTriangle, color: "bg-[#F9B672]/20 text-[#050725]", link: "/calendar", isAlert: true },
-    ],
-  },
-  {
-    date: "2026-03-07",
-    dateLabel: "Saturday, March 7",
-    events: [
-      { time: "10:00 AM", label: "Inventory Restock", icon: ShoppingCart, color: "bg-[#2C2F45] text-white", link: "/calendar" },
-    ],
-  },
-  {
-    date: "2026-03-10",
-    dateLabel: "Tuesday, March 10",
-    events: [
-      { time: "2:00 PM", label: "Supplier Delivery", icon: Truck, color: "bg-[#2E6F4E] text-white", link: "/calendar" },
-    ],
-  },
-  {
-    date: "2026-03-14",
-    dateLabel: "Saturday, March 14",
-    events: [
-      { time: "9:00 AM", label: "Price Adjustment Review", icon: Tag, color: "bg-[#F9B672] text-[#050725]", link: "/dashboard" },
-      { time: "3:00 PM", label: "Sales Performance Review", icon: BarChart3, color: "bg-[#2C2F45] text-white", link: "/dashboard" },
-    ],
-  },
-  {
-    date: "2026-03-18",
-    dateLabel: "Wednesday, March 18",
-    events: [
-      { time: "11:00 AM", label: "Budget Planning Session", icon: Receipt, color: "bg-[#2C2F45] text-white", link: "/assistant" },
-    ],
-  },
-  {
-    date: "2026-03-22",
-    dateLabel: "Sunday, March 22",
-    events: [
-      { time: "All Day", label: "CRITICAL stock: Soft Drinks running low", icon: AlertTriangle, color: "bg-red-100 text-red-700", link: "/calendar", isAlert: true },
-    ],
-  },
-  {
-    date: "2026-03-27",
-    dateLabel: "Friday, March 27",
-    events: [
-      { time: "9:00 AM", label: "Restock Warehouse", icon: ShoppingCart, color: "bg-[#2C2F45] text-white", link: "/calendar" },
-      { time: "1:00 PM", label: "Supplier Payment", icon: Receipt, color: "bg-[#2E6F4E] text-white", link: "/assistant" },
-    ],
-  },
-]
+function AgendaView({ agendaDays = [], loading = false, selectedDate }) {
+  const navigate = useNavigate();
+  const selectedLabel = new Intl.DateTimeFormat("en-PH", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(selectedDate);
 
-function AgendaView() {
-  const navigate = useNavigate()
-  const today = new Date().toISOString().split("T")[0]
+  const openLink = (link) => {
+    const [, focusSection = ""] = link.split("#");
+    navigate(link, {
+      state: focusSection
+        ? {
+            focusSection,
+            focusNonce: Date.now(),
+          }
+        : undefined,
+    });
+  };
 
   return (
-    <div className="bg-surface rounded-2xl shadow-sm overflow-hidden">
-
-      {/* HEADER */}
-      <div className="flex items-center gap-2 px-6 py-4 border-b border-neutral/20">
-        <CalendarDays size={16} className="text-accent" />
-        <h3 className="font-semibold text-primary">Full Agenda</h3>
-        <span className="text-xs text-neutral ml-2">
-          {AGENDA_DATA.reduce((acc, d) => acc + d.events.length, 0)} events this month
-        </span>
+    <section className="rounded-[30px] border border-white/60 bg-[#F4E9DA] shadow-[0_18px_45px_rgba(5,7,37,0.08)]">
+      <div className="flex items-start gap-3 border-b border-[#2C2F45]/10 px-6 py-5 sm:px-7">
+        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#2C2F45] text-[#F9B672]">
+          <CalendarDays size={18} />
+        </div>
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#F9B672]">Agenda view</p>
+          <h3 className="mt-2 text-2xl font-semibold text-[#050725]">Rolling daily timeline</h3>
+          <p className="mt-2 text-sm leading-7 text-[#6F6F76]">
+            This agenda refreshes from live business activity and keeps the next days around {selectedLabel} connected to the right workspace sections.
+          </p>
+        </div>
       </div>
 
-      {/* AGENDA LIST */}
-      <div className="divide-y divide-neutral/10">
-        {AGENDA_DATA.map((day) => {
-          const isPast = day.date < today
-          const isToday = day.date === today
-
-          return (
-            <div
-              key={day.date}
-              className={`flex gap-6 px-6 py-5 transition-colors ${
-                isPast ? "opacity-50" : ""
-              } ${isToday ? "bg-accent/5" : ""}`}
-            >
-              {/* DATE COLUMN */}
-              <div className="w-44 shrink-0">
-                <p className={`text-sm font-semibold ${isToday ? "text-accent" : "text-primary"}`}>
-                  {day.dateLabel}
-                </p>
-                {isToday && (
-                  <span className="text-[10px] font-bold text-accent bg-accent/15 px-2 py-0.5 rounded-full mt-1 inline-block">
-                    TODAY
-                  </span>
-                )}
+      <div className="divide-y divide-[#2C2F45]/8">
+        {loading
+          ? Array.from({ length: 6 }).map((_, index) => (
+              <div key={index} className="animate-pulse px-6 py-5 sm:px-7">
+                <div className="h-4 w-32 rounded bg-[#2C2F45]/10" />
+                <div className="mt-4 h-12 rounded bg-[#2C2F45]/8" />
+                <div className="mt-3 h-12 rounded bg-[#2C2F45]/8" />
               </div>
-
-              {/* EVENTS COLUMN */}
-              <div className="flex-1 flex flex-col gap-2.5">
-                {day.events.map((event, i) => {
-                  const Icon = event.icon
-                  return (
-                    <div
-                      key={i}
-                      onClick={() => navigate(event.link)}
-                      className="flex items-center gap-3 cursor-pointer group"
-                    >
-                      {/* Time */}
-                      <div className="flex items-center gap-1.5 w-20 shrink-0">
-                        <Clock size={10} className="text-neutral" />
-                        <span className="text-[11px] text-neutral font-medium">
-                          {event.time}
-                        </span>
-                      </div>
-
-                      {/* Event pill */}
-                      <span
-                        className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-2 rounded-xl shadow-sm transition-transform group-hover:scale-[1.02] ${event.color}`}
-                      >
-                        <Icon size={12} />
-                        {event.label}
+            ))
+          : agendaDays.map((day) => (
+              <div
+                key={day.date}
+                className={`flex flex-col gap-4 px-6 py-5 sm:px-7 lg:flex-row ${
+                  day.isToday ? "bg-[#F9B672]/8" : day.isSelected ? "bg-white/30" : "bg-transparent"
+                }`}
+              >
+                <div className="lg:w-60 lg:shrink-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className={`text-sm font-semibold ${day.isToday ? "text-[#C97D2F]" : "text-[#050725]"}`}>
+                      {day.dateLabel}
+                    </p>
+                    {day.isToday ? (
+                      <span className="inline-flex rounded-full bg-[#F9B672]/18 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#050725]">
+                        Today
                       </span>
-                    </div>
-                  )
-                })}
+                    ) : null}
+                    {day.isSelected ? (
+                      <span className="inline-flex rounded-full border border-[#2C2F45]/10 bg-white/85 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#6F6F76]">
+                        Selected day
+                      </span>
+                    ) : null}
+                  </div>
+                  <p className="mt-2 text-xs uppercase tracking-[0.16em] text-[#84848A]">
+                    {day.events.length} agenda item{day.events.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+
+                <div className="flex-1 space-y-3">
+                  {day.events.map((event, index) => {
+                    const Icon = event.icon;
+
+                    return (
+                      <button
+                        key={`${day.date}-${event.label}-${index}`}
+                        type="button"
+                        onClick={() => openLink(event.link)}
+                        className="interactive-surface flex w-full flex-col gap-3 rounded-[22px] border border-[#2C2F45]/8 bg-white/75 px-4 py-4 text-left shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] sm:flex-row sm:items-start"
+                      >
+                        <div className="inline-flex items-center gap-2 rounded-full bg-[#ECDFC7] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6F6F76]">
+                          <Clock3 size={12} />
+                          {event.time}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <span className={`inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold ${event.color}`}>
+                            <Icon size={12} />
+                            {event.label}
+                          </span>
+                          <p className="mt-3 text-sm leading-6 text-[#6F6F76]">{event.description}</p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-          )
-        })}
+            ))}
       </div>
-    </div>
-  )
+
+      {!loading && agendaDays.length === 0 ? (
+        <div className="px-6 py-10 text-center sm:px-7">
+          <Loader2 size={20} className="mx-auto text-[#F9B672]" />
+          <p className="mt-3 text-sm font-semibold text-[#050725]">No daily agenda is ready yet</p>
+          <p className="mt-2 text-sm leading-6 text-[#6F6F76]">
+            Record more activity to turn this timeline into a fuller day-by-day operations view.
+          </p>
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
-export default AgendaView
+export default AgendaView;

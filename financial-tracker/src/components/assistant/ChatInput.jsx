@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Send, Sparkles } from "lucide-react";
 
+const MESSAGE_LIMIT = 400;
+
 const SUGGESTION_GROUPS = [
   {
     label: "Budget",
@@ -23,7 +25,7 @@ const SUGGESTION_GROUPS = [
     suggestions: [
       "How can I reduce my expenses?",
       "Tips to save money this month.",
-      "What's my income vs expenses ratio?",
+      "What is my income vs expenses ratio?",
     ],
   },
   {
@@ -39,40 +41,40 @@ const SUGGESTION_GROUPS = [
 function ChatInput({ onSend, isLoading, showSuggestions }) {
   const [input, setInput] = useState("");
   const [activeGroup, setActiveGroup] = useState(0);
+  const trimmedInput = input.trim();
+  const isOverLimit = input.length > MESSAGE_LIMIT;
 
   const handleSend = () => {
-    if (!input.trim() || isLoading) return;
-    onSend(input.trim());
+    if (!trimmedInput || isLoading || isOverLimit) return;
+    onSend(trimmedInput);
     setInput("");
   };
 
-  const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
+  const handleKeyDown = (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
       handleSend();
     }
   };
 
-  const handleSuggestionClick = (text) => {
-    onSend(text);
-  };
-
   return (
-    <div className="flex flex-col gap-3">
-      {/* Suggestion Chips */}
+    <div className="space-y-4">
       {showSuggestions && (
-        <div className="space-y-2">
-          {/* Category Tabs */}
-          <div className="flex items-center gap-1.5">
-            <Sparkles size={12} className="text-accent shrink-0" />
-            {SUGGESTION_GROUPS.map((group, idx) => (
+        <div className="space-y-3 rounded-[24px] border border-[#2C2F45]/10 bg-white/55 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.85)]">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="inline-flex items-center gap-2 rounded-full bg-[#2C2F45] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#F9B672]">
+              <Sparkles size={12} />
+              Prompt ideas
+            </div>
+            {SUGGESTION_GROUPS.map((group, index) => (
               <button
                 key={group.label}
-                onClick={() => setActiveGroup(idx)}
-                className={`text-[11px] px-2.5 py-1 rounded-full font-medium transition-all duration-200 ${
-                  activeGroup === idx
-                    ? "bg-accent/25 text-primary border border-accent/40"
-                    : "text-neutral hover:text-primary hover:bg-accent/10"
+                type="button"
+                onClick={() => setActiveGroup(index)}
+                className={`rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] transition ${
+                  activeGroup === index
+                    ? "bg-[#F9B672]/20 text-[#050725]"
+                    : "text-[#84848A] hover:bg-[#ECDFC7] hover:text-[#050725]"
                 }`}
               >
                 {group.label}
@@ -80,83 +82,56 @@ function ChatInput({ onSend, isLoading, showSuggestions }) {
             ))}
           </div>
 
-          {/* Suggestion Pills */}
           <div className="flex flex-wrap gap-2">
-            {SUGGESTION_GROUPS[activeGroup].suggestions.map((s) => (
+            {SUGGESTION_GROUPS[activeGroup].suggestions.map((suggestion) => (
               <button
-                key={s}
-                onClick={() => handleSuggestionClick(s)}
-                className="
-                  text-xs
-                  bg-accent/15
-                  hover:bg-accent/25
-                  text-primary
-                  font-medium
-                  px-3 py-1.5
-                  rounded-full
-                  border border-accent/25
-                  transition-all duration-200
-                  hover:-translate-y-0.5
-                  hover:shadow-sm
-                "
+                key={suggestion}
+                type="button"
+                onClick={() => onSend(suggestion)}
+                className="rounded-full border border-[#F9B672]/25 bg-[#F9B672]/12 px-3 py-2 text-xs font-medium text-[#050725] transition hover:-translate-y-0.5 hover:bg-[#F9B672]/18"
               >
-                {s}
+                {suggestion}
               </button>
             ))}
           </div>
         </div>
       )}
 
-      {/* Input Row */}
-      <div
-        className="
-          flex items-end gap-2
-          bg-surface
-          rounded-2xl
-          p-3
-          border border-neutral/20
-          focus-within:border-accent
-          focus-within:bg-white
-          transition-all duration-200
-        "
-      >
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="What would you like to know?"
-          rows={1}
-          className="
-            flex-1
-            resize-none
-            text-sm
-            text-primary
-            focus:outline-none
-            placeholder:text-neutral
-            bg-transparent
-            leading-relaxed
-            max-h-28
-          "
-        />
+      <div className="rounded-[26px] border border-[#2C2F45]/10 bg-white/70 p-3 shadow-[0_14px_34px_rgba(5,7,37,0.06)]">
+        <div className="flex items-end gap-3 rounded-[22px] border border-[#2C2F45]/8 bg-[#F4E9DA] px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] focus-within:border-[#F9B672]">
+          <textarea
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask about expenses, restock priorities, balances, or forecasts"
+            rows={1}
+            className="min-h-[44px] max-h-32 flex-1 resize-none bg-transparent text-sm leading-relaxed text-[#050725] outline-none placeholder:text-[#84848A]"
+          />
 
-        {/* Send Button */}
-        <button
-          onClick={handleSend}
-          disabled={!input.trim() || isLoading}
-          className={`
-            p-2
-            rounded-xl
-            transition-all duration-200
-            shrink-0
-            ${
-              input.trim() && !isLoading
-                ? "bg-secondary hover:bg-primary text-white hover:-translate-y-0.5"
-                : "bg-neutral/30 text-neutral cursor-not-allowed"
-            }
-          `}
-        >
-          <Send size={16} />
-        </button>
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={!trimmedInput || isLoading || isOverLimit}
+            className={`flex h-11 w-11 items-center justify-center rounded-2xl transition ${
+              trimmedInput && !isLoading && !isOverLimit
+                ? "bg-[#2C2F45] text-white shadow-[0_12px_24px_rgba(5,7,37,0.16)] hover:bg-[#050725]"
+                : "cursor-not-allowed bg-[#2C2F45]/12 text-[#84848A]"
+            }`}
+          >
+            <Send size={16} />
+          </button>
+        </div>
+
+        <div className="mt-3 flex items-center justify-between gap-3 px-1 text-[11px] font-medium">
+          <span className={`${isOverLimit ? "text-[#B74747]" : "text-[#84848A]"}`}>
+            {isOverLimit
+              ? `Shorten your message to ${MESSAGE_LIMIT} characters or fewer.`
+              : "Press Enter to send, or Shift + Enter for a new line."}
+          </span>
+          <span className={`${isOverLimit ? "text-[#B74747]" : "text-[#84848A]"}`}>
+            {input.length}/{MESSAGE_LIMIT}
+          </span>
+        </div>
       </div>
     </div>
   );

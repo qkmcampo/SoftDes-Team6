@@ -1,0 +1,15 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+*.db
+*.db-journal
+.pytest_cache/
+venv/
+.venv/
+financial-env/
+ml/models/
+add_sample_data.py
+run_transaction_validation_trials.py
+test_*.py
+validation_*.db*

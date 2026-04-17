@@ -1,11 +1,10 @@
-function LoadingSpinner({ message = 'Loading...' }) {
+function LoadingSpinner({ message = "Loading..." }) {
   return (
-    <div className="flex flex-col items-center justify-center py-10 gap-3">
-      <div className="w-7 h-7 border-[3px] border-pink-200
-      border-t-pink-600 rounded-full animate-spin" />
-      <p className="text-xs text-gray-400 font-medium">{message}</p>
+    <div className="flex flex-col items-center justify-center gap-3 py-10">
+      <div className="h-8 w-8 animate-spin rounded-full border-[3px] border-[#F9B672]/35 border-t-[#2C2F45]" />
+      <p className="text-xs font-medium uppercase tracking-[0.18em] text-[#84848A]">{message}</p>
     </div>
-  )
+  );
 }
 
-export default LoadingSpinner
+export default LoadingSpinner;

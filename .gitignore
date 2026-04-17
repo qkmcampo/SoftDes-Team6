@@ -1,0 +1,29 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Python
+**/__pycache__/
+**/*.pyc
+**/.pytest_cache/
+.venv/
+venv/
+
+# Vercel local project files
+**/.vercel/
+
+# Local environment files
+financial-tracker/.env
+financial-tracker-api/.env
+
+# Local databases and journals
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+
+# Build output
+financial-tracker/dist/
+financial-tracker/node_modules/

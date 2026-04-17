@@ -1,118 +1,103 @@
-import { Bot, User, Copy, Check } from "lucide-react";
 import { useState } from "react";
+import { Bot, Check, Copy, User } from "lucide-react";
 
-/* ─── Lightweight Markdown Parser ─── */
 function parseMarkdown(text) {
   const lines = text.split("\n");
   const elements = [];
-  let i = 0;
+  let index = 0;
 
-  while (i < lines.length) {
-    const line = lines[i];
+  while (index < lines.length) {
+    const line = lines[index];
+    const trimmedLine = line.trim();
 
-    // Empty line → spacer
-    if (line.trim() === "") {
-      elements.push({ type: "spacer", key: i });
-      i++;
+    if (!trimmedLine) {
+      elements.push({ type: "spacer", key: `spacer-${index}` });
+      index += 1;
       continue;
     }
 
-    // Heading: ### or ## or #
-    if (line.startsWith("### ")) {
-      elements.push({ type: "h3", text: line.slice(4), key: i });
-      i++;
-      continue;
-    }
-    if (line.startsWith("## ")) {
-      elements.push({ type: "h2", text: line.slice(3), key: i });
-      i++;
-      continue;
-    }
-    if (line.startsWith("# ")) {
-      elements.push({ type: "h1", text: line.slice(2), key: i });
-      i++;
+    if (trimmedLine.startsWith("### ")) {
+      elements.push({ type: "h3", text: trimmedLine.slice(4), key: `h3-${index}` });
+      index += 1;
       continue;
     }
 
-    // Bullet list: - or * or •
-    if (/^[\-\*•]\s/.test(line.trim())) {
+    if (trimmedLine.startsWith("## ")) {
+      elements.push({ type: "h2", text: trimmedLine.slice(3), key: `h2-${index}` });
+      index += 1;
+      continue;
+    }
+
+    if (trimmedLine.startsWith("# ")) {
+      elements.push({ type: "h1", text: trimmedLine.slice(2), key: `h1-${index}` });
+      index += 1;
+      continue;
+    }
+
+    if (/^[-*]\s/.test(trimmedLine)) {
       const items = [];
-      while (i < lines.length && /^[\-\*•]\s/.test(lines[i].trim())) {
-        items.push(lines[i].trim().replace(/^[\-\*•]\s+/, ""));
-        i++;
+      while (index < lines.length && /^[-*]\s/.test(lines[index].trim())) {
+        items.push(lines[index].trim().replace(/^[-*]\s+/, ""));
+        index += 1;
       }
-      elements.push({ type: "ul", items, key: `ul-${i}` });
+      elements.push({ type: "ul", items, key: `ul-${index}` });
       continue;
     }
 
-    // Numbered list: 1. 2. 3.
-    if (/^\d+[\.\)]\s/.test(line.trim())) {
+    if (/^\d+[.)]\s/.test(trimmedLine)) {
       const items = [];
-      while (i < lines.length && /^\d+[\.\)]\s/.test(lines[i].trim())) {
-        items.push(lines[i].trim().replace(/^\d+[\.\)]\s+/, ""));
-        i++;
+      while (index < lines.length && /^\d+[.)]\s/.test(lines[index].trim())) {
+        items.push(lines[index].trim().replace(/^\d+[.)]\s+/, ""));
+        index += 1;
       }
-      elements.push({ type: "ol", items, key: `ol-${i}` });
+      elements.push({ type: "ol", items, key: `ol-${index}` });
       continue;
     }
 
-    // Regular paragraph
-    elements.push({ type: "p", text: line, key: i });
-    i++;
+    elements.push({ type: "p", text: line, key: `p-${index}` });
+    index += 1;
   }
 
   return elements;
 }
 
-/* ─── Inline formatting: **bold**, *italic*, `code`, ₱ highlight ─── */
 function renderInline(text) {
   if (!text) return null;
 
   const parts = [];
-  // Split by **bold**, *italic*, `code`
-  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|(₱[\d,]+\.?\d*))/g;
+  const pattern = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|(P[\d,]+\.?\d*))/g;
   let lastIndex = 0;
   let match;
 
-  while ((match = regex.exec(text)) !== null) {
-    // Text before match
+  while ((match = pattern.exec(text)) !== null) {
     if (match.index > lastIndex) {
-      parts.push(
-        <span key={`t-${lastIndex}`}>{text.slice(lastIndex, match.index)}</span>
-      );
+      parts.push(<span key={`text-${lastIndex}`}>{text.slice(lastIndex, match.index)}</span>);
     }
 
     if (match[2]) {
-      // **bold**
       parts.push(
-        <strong key={`b-${match.index}`} className="font-semibold">
+        <strong key={`bold-${match.index}`} className="font-semibold text-[#050725]">
           {match[2]}
         </strong>
       );
     } else if (match[3]) {
-      // *italic*
       parts.push(
-        <em key={`i-${match.index}`} className="italic">
+        <em key={`italic-${match.index}`} className="italic">
           {match[3]}
         </em>
       );
     } else if (match[4]) {
-      // `code`
       parts.push(
         <code
-          key={`c-${match.index}`}
-          className="bg-[#ECDFC7] text-[#050725] px-1.5 py-0.5 rounded text-xs font-mono"
+          key={`code-${match.index}`}
+          className="rounded-lg bg-[#ECDFC7] px-1.5 py-0.5 text-xs font-mono text-[#050725]"
         >
           {match[4]}
         </code>
       );
     } else if (match[5]) {
-      // ₱ amount highlight
       parts.push(
-        <span
-          key={`p-${match.index}`}
-          className="font-semibold text-[#2E6F4E]"
-        >
+        <span key={`currency-${match.index}`} className="font-semibold text-[#2E6F4E]">
           {match[5]}
         </span>
       );
@@ -121,147 +106,113 @@ function renderInline(text) {
     lastIndex = match.index + match[0].length;
   }
 
-  // Remaining text
   if (lastIndex < text.length) {
-    parts.push(<span key={`t-${lastIndex}`}>{text.slice(lastIndex)}</span>);
+    parts.push(<span key={`text-${lastIndex}`}>{text.slice(lastIndex)}</span>);
   }
 
   return parts.length > 0 ? parts : text;
 }
 
-/* ─── Main Component ─── */
 function ChatMessage({ message }) {
   const isUser = message.role === "user";
   const [copied, setCopied] = useState(false);
+  const parsedContent = !isUser ? parseMarkdown(message.content) : null;
 
-  const handleCopy = () => {
-    navigator.clipboard.writeText(message.content);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(message.content);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
   };
 
-  const parsed = !isUser ? parseMarkdown(message.content) : null;
-
   return (
-    <div
-      className={`flex items-end gap-2.5 animate-slide-up ${
-        isUser ? "flex-row-reverse" : "flex-row"
-      }`}
-    >
-      {/* Avatar */}
+    <div className={`flex items-end gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}>
       <div
-        className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 shadow-sm ${
-          isUser ? "bg-primary" : "bg-secondary"
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl shadow-[0_12px_22px_rgba(5,7,37,0.10)] ${
+          isUser ? "bg-[#2C2F45] text-white" : "bg-[#050725] text-[#F9B672]"
         }`}
       >
-        {isUser ? (
-          <User size={14} className="text-white" />
-        ) : (
-          <Bot size={14} className="text-white" />
-        )}
+        {isUser ? <User size={16} /> : <Bot size={16} />}
       </div>
 
-      {/* Message Bubble */}
       <div
-        className={`group relative max-w-[75%] px-4 py-3 text-sm leading-relaxed shadow-sm ${
+        className={`group relative max-w-[78%] rounded-[24px] px-4 py-3 text-sm leading-7 shadow-[0_14px_32px_rgba(5,7,37,0.06)] ${
           isUser
-            ? "bg-secondary text-white rounded-2xl rounded-br-sm"
-            : "bg-surface text-primary rounded-2xl rounded-bl-sm"
+            ? "rounded-br-md bg-[#2C2F45] text-white"
+            : "rounded-bl-md border border-[#2C2F45]/8 bg-white/80 text-[#050725]"
         }`}
       >
-        {/* Copy button for assistant messages */}
         {!isUser && (
           <button
+            type="button"
             onClick={handleCopy}
-            className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg hover:bg-[#ECDFC7]"
+            className="absolute right-3 top-3 rounded-lg p-1 text-[#84848A] opacity-0 transition group-hover:opacity-100 hover:bg-[#ECDFC7] hover:text-[#050725]"
             title="Copy message"
           >
-            {copied ? (
-              <Check size={12} className="text-[#2E6F4E]" />
-            ) : (
-              <Copy size={12} className="text-[#84848A]" />
-            )}
+            {copied ? <Check size={13} className="text-[#2E6F4E]" /> : <Copy size={13} />}
           </button>
         )}
 
-        {/* Render content */}
         {isUser ? (
-          // User messages: plain text
-          message.content.split("\n").map((line, i, arr) => (
-            <span key={i}>
-              {line}
-              {i < arr.length - 1 && <br />}
-            </span>
-          ))
+          <div className="space-y-1 text-white/95">
+            {message.content.split("\n").map((line, index) => (
+              <p key={`${message.id}-${index}`}>{line}</p>
+            ))}
+          </div>
         ) : (
-          // Assistant messages: parsed markdown
-          <div className="space-y-1.5">
-            {parsed.map((el) => {
-              switch (el.type) {
+          <div className="space-y-2 pr-6">
+            {parsedContent.map((element) => {
+              switch (element.type) {
                 case "spacer":
-                  return <div key={el.key} className="h-1" />;
-
+                  return <div key={element.key} className="h-1" />;
                 case "h1":
                   return (
-                    <h3
-                      key={el.key}
-                      className="text-base font-bold text-[#050725] mt-2 mb-1"
-                    >
-                      {renderInline(el.text)}
+                    <h3 key={element.key} className="text-base font-semibold text-[#050725]">
+                      {renderInline(element.text)}
                     </h3>
                   );
-
                 case "h2":
                   return (
-                    <h4
-                      key={el.key}
-                      className="text-sm font-bold text-[#050725] mt-2 mb-1"
-                    >
-                      {renderInline(el.text)}
+                    <h4 key={element.key} className="text-sm font-semibold text-[#050725]">
+                      {renderInline(element.text)}
                     </h4>
                   );
-
                 case "h3":
                   return (
-                    <h5
-                      key={el.key}
-                      className="text-sm font-semibold text-[#050725] mt-1.5 mb-0.5"
-                    >
-                      {renderInline(el.text)}
+                    <h5 key={element.key} className="text-sm font-semibold text-[#2C2F45]">
+                      {renderInline(element.text)}
                     </h5>
                   );
-
                 case "ul":
                   return (
-                    <ul key={el.key} className="space-y-1 ml-1">
-                      {el.items.map((item, j) => (
-                        <li key={j} className="flex items-start gap-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#F9B672] mt-1.5 shrink-0" />
+                    <ul key={element.key} className="space-y-2">
+                      {element.items.map((item, index) => (
+                        <li key={`${element.key}-${index}`} className="flex items-start gap-2">
+                          <span className="mt-2 h-1.5 w-1.5 rounded-full bg-[#F9B672]" />
                           <span>{renderInline(item)}</span>
                         </li>
                       ))}
                     </ul>
                   );
-
                 case "ol":
                   return (
-                    <ol key={el.key} className="space-y-1 ml-1">
-                      {el.items.map((item, j) => (
-                        <li key={j} className="flex items-start gap-2">
-                          <span className="text-xs font-bold text-[#F9B672] mt-0.5 shrink-0 w-4">
-                            {j + 1}.
-                          </span>
+                    <ol key={element.key} className="space-y-2">
+                      {element.items.map((item, index) => (
+                        <li key={`${element.key}-${index}`} className="flex items-start gap-2">
+                          <span className="mt-0.5 w-5 text-xs font-semibold text-[#F9B672]">{index + 1}.</span>
                           <span>{renderInline(item)}</span>
                         </li>
                       ))}
                     </ol>
                   );
-
                 case "p":
                 default:
                   return (
-                    <p key={el.key} className="leading-relaxed">
-                      {renderInline(el.text)}
+                    <p key={element.key} className="text-[#050725]">
+                      {renderInline(element.text)}
                     </p>
                   );
               }
@@ -269,12 +220,7 @@ function ChatMessage({ message }) {
           </div>
         )}
 
-        {/* Timestamp */}
-        <p
-          className={`text-[10px] mt-1.5 font-medium ${
-            isUser ? "text-neutral text-right" : "text-neutral"
-          }`}
-        >
+        <p className={`mt-2 text-[10px] font-medium ${isUser ? "text-white/60 text-right" : "text-[#84848A]"}`}>
           {message.timestamp}
         </p>
       </div>

@@ -1,201 +1,188 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 import {
-  LineChart, Line, XAxis, YAxis,
-  CartesianGrid, Tooltip,
-  ResponsiveContainer, ReferenceLine,
-} from "recharts"
+  CartesianGrid,
+  Line,
+  LineChart,
+  ReferenceLine,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 
-import { forecastAPI } from "../../services/api"
-import LoadingSpinner from "../shared/LoadingSpinner"
+import { forecastAPI } from "../../services/api";
+import LoadingSpinner from "../shared/LoadingSpinner";
 
-// ── Custom tooltip ────────────────────────────────────────
+function formatCompactCurrency(value) {
+  const numericValue = Number(value) || 0;
+  if (Math.abs(numericValue) >= 1000) {
+    return `P${(numericValue / 1000).toFixed(1)}k`;
+  }
+  return `P${numericValue.toFixed(0)}`;
+}
+
 function CustomTooltip({ active, payload, label }) {
-  if (!active || !payload?.length) return null
+  if (!active || !payload?.length) return null;
+
   return (
-    <div className="bg-[#1f1f1f] border border-[#333]
-                    rounded-xl p-3 text-xs min-w-[130px]">
-      <p className="text-gray-400 mb-2">{label}</p>
-      {payload.map((p) => (
-        <p key={p.dataKey} style={{ color: p.color }}
-           className="mb-0.5">
-          {p.name}: ₱{Number(p.value).toLocaleString()}
-        </p>
-      ))}
+    <div className="min-w-[160px] rounded-2xl border border-[#2C2F45]/10 bg-[#F4E9DA] px-4 py-3 shadow-[0_16px_35px_rgba(5,7,37,0.12)]">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#84848A]">{label}</p>
+      <div className="mt-2 space-y-1.5">
+        {payload.map((entry) => (
+          <p key={entry.dataKey} className="text-sm font-medium" style={{ color: entry.color }}>
+            {entry.name}: P{Number(entry.value).toLocaleString("en-PH")}
+          </p>
+        ))}
+      </div>
     </div>
-  )
+  );
 }
 
 function AnalyticsChart() {
-
-  const [chartData, setChartData]       = useState([])
-  const [splitLabel, setSplitLabel]     = useState(null)
-  const [modelName, setModelName]       = useState('')
-  const [loading, setLoading]           = useState(true)
-  const [error, setError]               = useState(null)
+  const [chartData, setChartData] = useState([]);
+  const [splitLabel, setSplitLabel] = useState(null);
+  const [modelName, setModelName] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
-    forecastAPI.getForecast()
-      .then(data => {
-        const recent   = data.recent_sales ?? []
-        const forecast = data.forecast     ?? []
+    forecastAPI
+      .getForecast()
+      .then((data) => {
+        const recentSales = data.recent_sales ?? [];
+        const forecastSales = data.forecast ?? [];
 
-        // ── Actual days ───────────────────────────────────
-        const actualPoints = recent.map((val, i) => ({
-          label:    `D${i + 1}`,
-          actual:   Math.round(val),
+        const actualPoints = recentSales.map((value, index) => ({
+          label: `D${index + 1}`,
+          actual: Math.round(value),
           forecast: null,
-        }))
+        }));
 
-        // ── Forecast days (dashed continuation) ──────────
-        const forecastPoints = forecast.map((val, i) => ({
-          label:    `+${i + 1}d`,
-          actual:   null,
-          forecast: Math.round(val),
-        }))
+        const projectedPoints = forecastSales.map((value, index) => ({
+          label: `+${index + 1}d`,
+          actual: null,
+          forecast: Math.round(value),
+        }));
 
-        // ── Stitch: last actual point also starts forecast
-        // so the line connects visually
-        if (actualPoints.length > 0 && forecastPoints.length > 0) {
-          forecastPoints[0] = {
-            ...forecastPoints[0],
+        if (actualPoints.length > 0 && projectedPoints.length > 0) {
+          projectedPoints[0] = {
+            ...projectedPoints[0],
             actual: actualPoints[actualPoints.length - 1].actual,
-          }
+          };
         }
 
-        setChartData([...actualPoints, ...forecastPoints])
-        setSplitLabel(forecastPoints[0]?.label ?? null)
-        setModelName(data.model ?? '')
-        setLoading(false)
+        setChartData([...actualPoints, ...projectedPoints]);
+        setSplitLabel(projectedPoints[0]?.label ?? null);
+        setModelName(data.model ?? "Forecast");
+        setLoading(false);
       })
       .catch(() => {
-        setError('Could not load forecast data')
-        setLoading(false)
-      })
-  }, [])
+        setError("We could not load the sales forecast right now.");
+        setLoading(false);
+      });
+  }, []);
 
   return (
-    <div className="bg-[#1f1f1f] rounded-2xl p-6 shadow-xl
-                    border border-[#333]">
-
-      {/* Header */}
-      <div className="flex items-center justify-between mb-5">
+    <section className="surface-panel surface-panel-pad">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-white">
-            Sales Analytics
-          </h3>
-          <p className="text-gray-400 text-xs mt-1">
-            Last 30 days of sales + 7-day forecast
-            {modelName && (
-              <span className="ml-1 text-green-400">
-                ({modelName})
-              </span>
-            )}
+          <p className="section-eyebrow">Sales analytics</p>
+          <h3 className="section-subtitle">Performance and 7-day forecast</h3>
+          <p className="section-copy">
+            Review recent sales movement and the projected trend line generated from your latest data.
           </p>
         </div>
-        <span className="text-xs bg-[#003366] text-white
-                         px-3 py-1 rounded-full">
-          Live Data
-        </span>
+
+        <div className="inline-flex items-center gap-2 rounded-full border border-[#2C2F45]/10 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#2C2F45]">
+          Model
+          <span className="rounded-full bg-[#2C2F45] px-2.5 py-1 text-[10px] text-white">{modelName || "Forecast"}</span>
+        </div>
       </div>
 
       {loading ? (
-        <LoadingSpinner message="Loading forecast..." />
+        <LoadingSpinner message="Loading forecast" />
       ) : error ? (
-        <p className="text-red-400 text-sm text-center py-10">
+        <div className="mt-8 rounded-[22px] border border-red-200 bg-red-50/80 px-4 py-4 text-sm text-red-700">
           {error}
-        </p>
+        </div>
       ) : (
-        <ResponsiveContainer width="100%" height={270}>
-          <LineChart
-            data={chartData}
-            margin={{ top: 5, right: 10, bottom: 5, left: 10 }}
-          >
-            <CartesianGrid
-              strokeDasharray="3 3"
-              stroke="#2d2d2d"
-            />
+        <>
+          <div className="mt-8 h-[280px] w-full sm:h-[310px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={chartData} margin={{ top: 12, right: 18, bottom: 0, left: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#D7C8B1" vertical={false} />
 
-            <XAxis
-              dataKey="label"
-              tick={{ fontSize: 11, fill: '#9CA3AF' }}
-              axisLine={false}
-              tickLine={false}
-              interval={4}
-            />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 11, fill: "#84848A" }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={4}
+                />
 
-            <YAxis
-              tick={{ fontSize: 11, fill: '#9CA3AF' }}
-              axisLine={false}
-              tickLine={false}
-              tickFormatter={v =>
-                `₱${(v / 1000).toFixed(1)}k`}
-            />
+                <YAxis
+                  tick={{ fontSize: 11, fill: "#84848A" }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={formatCompactCurrency}
+                />
 
-            <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip />} />
 
-            {/* Divider line between actual and forecast */}
-            {splitLabel && (
-              <ReferenceLine
-                x={splitLabel}
-                stroke="#444"
-                strokeDasharray="4 4"
-                label={{
-                  value: 'Forecast →',
-                  fill: '#666',
-                  fontSize: 10,
-                  position: 'insideTopRight',
-                }}
-              />
-            )}
+                {splitLabel && (
+                  <ReferenceLine
+                    x={splitLabel}
+                    stroke="#B6A48A"
+                    strokeDasharray="4 4"
+                    label={{
+                      value: "Forecast",
+                      fill: "#84848A",
+                      fontSize: 10,
+                      position: "insideTopRight",
+                    }}
+                  />
+                )}
 
-            {/* Actual sales — solid green */}
-            <Line
-              type="monotone"
-              dataKey="actual"
-              name="Actual"
-              stroke="#22c55e"
-              strokeWidth={2.5}
-              dot={{ r: 2, fill: '#22c55e' }}
-              activeDot={{ r: 5 }}
-              connectNulls={false}
-            />
+                <Line
+                  type="monotone"
+                  dataKey="actual"
+                  name="Actual"
+                  stroke="#2E6F4E"
+                  strokeWidth={3}
+                  dot={{ r: 2.5, fill: "#2E6F4E" }}
+                  activeDot={{ r: 5 }}
+                  connectNulls={false}
+                />
 
-            {/* Forecast — dashed blue/orange depending on model */}
-            <Line
-              type="monotone"
-              dataKey="forecast"
-              name={modelName || 'Forecast'}
-              stroke="#fb923c"
-              strokeWidth={2}
-              strokeDasharray="6 3"
-              dot={{ r: 3, fill: '#fb923c' }}
-              activeDot={{ r: 5 }}
-              connectNulls={false}
-            />
+                <Line
+                  type="monotone"
+                  dataKey="forecast"
+                  name={modelName || "Forecast"}
+                  stroke="#F9B672"
+                  strokeWidth={2.5}
+                  strokeDasharray="6 4"
+                  dot={{ r: 3, fill: "#F9B672" }}
+                  activeDot={{ r: 5 }}
+                  connectNulls={false}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
 
-          </LineChart>
-        </ResponsiveContainer>
+          <div className="mt-5 flex flex-wrap items-center gap-5 border-t border-[#2C2F45]/8 pt-4 text-xs text-[#6F6F76]">
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-1.5 w-8 rounded-full bg-[#2E6F4E]" />
+              Actual sales
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="inline-block h-1.5 w-8 rounded-full border border-dashed border-[#F9B672] bg-[#F9B672]/50" />
+              {modelName || "Forecast"} projection
+            </div>
+          </div>
+        </>
       )}
-
-      {/* Legend note */}
-      <div className="flex gap-4 mt-3 justify-center">
-        <div className="flex items-center gap-1.5 text-xs
-                        text-gray-500">
-          <span className="w-6 h-0.5 bg-green-500
-                           inline-block rounded" />
-          Actual Sales
-        </div>
-        <div className="flex items-center gap-1.5 text-xs
-                        text-gray-500">
-          <span className="w-6 h-0.5 bg-orange-400
-                           inline-block rounded
-                           border-dashed" />
-          {modelName} Forecast
-        </div>
-      </div>
-
-    </div>
-  )
+    </section>
+  );
 }
 
-export default AnalyticsChart
+export default AnalyticsChart;

@@ -1,189 +1,126 @@
-import { useNavigate } from "react-router-dom"
-import {
-  Receipt,
-  ShoppingCart,
-  Tag,
-  AlertTriangle,
-  CalendarDays,
-  Truck,
-  BarChart3
-} from "lucide-react"
+import { useNavigate } from "react-router-dom";
+import { CalendarDays, Clock3, Loader2 } from "lucide-react";
 
-const agendaItems = [
+function AgendaPanel({ agendaDays = [], loading = false, selectedDate }) {
+  const navigate = useNavigate();
+  const selectedLabel = new Intl.DateTimeFormat("en-PH", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(selectedDate);
 
-  {
-    id: 1,
-    date: "March 2, 2026",
-    events: [
-      {
-        label: "Monthly Bills Payment",
-        icon: Receipt,
-        color: "bg-secondary text-white",
-        link: "/assistant"
-      },
-    ],
-  },
-
-  {
-    id: 2,
-    date: "March 4, 2026",
-    events: [],
-    alert: "LOW stock Cooking Oil — Recommended restock today",
-    link: "/calendar"
-  },
-
-  {
-    id: 3,
-    date: "March 7, 2026",
-    events: [
-      {
-        label: "Inventory Restock",
-        icon: ShoppingCart,
-        color: "bg-secondary text-white",
-        link: "/calendar"
-      },
-    ],
-  },
-
-  {
-    id: 4,
-    date: "March 10, 2026",
-    events: [
-      {
-        label: "Supplier Delivery",
-        icon: Truck,
-        color: "bg-secondary text-white",
-        link: "/calendar"
-      },
-    ],
-  },
-
-  {
-    id: 5,
-    date: "March 14, 2026",
-    events: [
-      {
-        label: "Price Adjustment",
-        icon: Tag,
-        color: "bg-accent text-primary",
-        link: "/dashboard"
-      },
-    ],
-  },
-
-  {
-    id: 6,
-    date: "March 18, 2026",
-    events: [
-      {
-        label: "Sales Performance Review",
-        icon: BarChart3,
-        color: "bg-secondary text-white",
-        link: "/dashboard"
-      },
-    ],
-  },
-
-  {
-    id: 7,
-    date: "March 22, 2026",
-    events: [],
-    alert: "CRITICAL stock: Soft Drinks running low",
-    link: "/calendar"
-  },
-
-  {
-    id: 8,
-    date: "March 27, 2026",
-    events: [
-      {
-        label: "Restock Warehouse",
-        icon: ShoppingCart,
-        color: "bg-secondary text-white",
-        link: "/calendar"
-      },
-      {
-        label: "Supplier Payment",
-        icon: Receipt,
-        color: "bg-secondary text-white",
-        link: "/assistant"
-      },
-    ],
-  },
-
-]
-
-function AgendaPanel() {
-
-  const navigate = useNavigate()
+  const openLink = (link) => {
+    const [, focusSection = ""] = link.split("#");
+    navigate(link, {
+      state: focusSection
+        ? {
+            focusSection,
+            focusNonce: Date.now(),
+          }
+        : undefined,
+    });
+  };
 
   return (
-    <div className="bg-surface rounded-2xl p-6 shadow-sm">
-
-      {/* HEADER */}
-      <div className="flex items-center gap-2 mb-5">
-        <CalendarDays size={16} className="text-accent" />
-        <h3 className="font-semibold text-primary">
-          Agenda Details
-        </h3>
+    <section className="surface-panel surface-panel-pad">
+      <div className="flex items-start gap-3">
+        <div className="icon-chip h-11 w-11">
+          <CalendarDays size={18} />
+        </div>
+        <div>
+          <p className="section-eyebrow">Agenda details</p>
+          <h3 className="section-subtitle">Daily agenda linked to your latest records</h3>
+          <p className="section-copy">
+            The schedule below refreshes from current transactions, sales, and stock activity for {selectedLabel} onward.
+          </p>
+        </div>
       </div>
 
-      {/* AGENDA LIST */}
-      <ul className="flex flex-col gap-5">
+      <ul className="mt-6 space-y-4">
+        {loading
+          ? Array.from({ length: 4 }).map((_, index) => (
+              <li
+                key={index}
+                className="animate-pulse rounded-[24px] border border-[#2C2F45]/8 bg-white/70 px-4 py-4"
+              >
+                <div className="h-4 w-28 rounded bg-[#2C2F45]/10" />
+                <div className="mt-4 h-10 rounded bg-[#2C2F45]/8" />
+              </li>
+            ))
+          : agendaDays.map((day) => (
+              <li
+                key={day.date}
+                className={`rounded-[24px] border px-4 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ${
+                  day.isToday
+                    ? "border-[#F9B672]/35 bg-[#F9B672]/10"
+                    : day.isSelected
+                    ? "border-[#2C2F45]/12 bg-white/78"
+                    : "border-[#2C2F45]/8 bg-white/70"
+                }`}
+              >
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                  <div className="lg:w-48">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-semibold text-[#050725]">{day.dateLabel}</p>
+                      {day.isToday ? (
+                        <span className="rounded-full bg-[#F9B672]/18 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#050725]">
+                          Today
+                        </span>
+                      ) : null}
+                      {day.isSelected ? (
+                        <span className="rounded-full border border-[#2C2F45]/10 bg-white/85 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[#6F6F76]">
+                          Selected
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-xs uppercase tracking-[0.18em] text-[#84848A]">
+                      {day.events.length} planned update{day.events.length === 1 ? "" : "s"}
+                    </p>
+                  </div>
 
-        {agendaItems.map((item) => (
+                  <div className="flex-1 space-y-2.5">
+                    {day.events.map((event, index) => {
+                      const Icon = event.icon;
 
-          <li
-            key={item.id}
-            className="flex items-start gap-4 pb-5 border-b border-neutral/20 last:border-0 last:pb-0"
-          >
+                      return (
+                        <button
+                          key={`${day.date}-${event.label}-${index}`}
+                          type="button"
+                          onClick={() => openLink(event.link)}
+                          className="interactive-surface flex w-full flex-col gap-3 rounded-[22px] border border-[#2C2F45]/8 bg-white/80 px-4 py-3 text-left sm:flex-row sm:items-center"
+                        >
+                          <div className="inline-flex items-center gap-2 rounded-full bg-[#ECDFC7] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#6F6F76]">
+                            <Clock3 size={12} />
+                            {event.time}
+                          </div>
 
-            {/* DATE */}
-            <div className="w-36 shrink-0">
-              <span className="text-xs font-semibold text-neutral">
-                {item.date}
-              </span>
-            </div>
-
-            {/* EVENTS */}
-            <div className="flex flex-wrap gap-2">
-
-              {item.events.map((event, i) => {
-
-                const Icon = event.icon
-
-                return (
-                  <span
-                    key={i}
-                    onClick={() => navigate(event.link)}
-                    className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl shadow-sm cursor-pointer hover:scale-105 transition ${event.color}`}
-                  >
-                    <Icon size={11} />
-                    {event.label}
-                  </span>
-                )
-              })}
-
-              {item.alert && (
-                <span
-                  onClick={() => navigate(item.link)}
-                  className="flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-xl bg-accent/20 text-primary shadow-sm cursor-pointer hover:scale-105 transition"
-                >
-                  <AlertTriangle size={11} />
-                  {item.alert}
-                </span>
-              )}
-
-            </div>
-
-          </li>
-
-        ))}
-
+                          <div className="min-w-0 flex-1">
+                            <span className={`inline-flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-semibold ${event.color}`}>
+                              <Icon size={12} />
+                              {event.label}
+                            </span>
+                            <p className="mt-2 text-sm leading-6 text-[#6F6F76]">{event.description}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </li>
+            ))}
       </ul>
 
-    </div>
-  )
+      {!loading && agendaDays.length === 0 ? (
+        <div className="mt-6 rounded-[24px] border border-dashed border-[#2C2F45]/12 bg-white/45 px-5 py-10 text-center">
+          <Loader2 size={20} className="mx-auto text-[#F9B672]" />
+          <p className="mt-3 text-sm font-semibold text-[#050725]">No agenda data is ready yet</p>
+          <p className="mt-2 text-sm leading-6 text-[#6F6F76]">
+            Add transactions, sales, or inventory updates to generate a more detailed daily timeline.
+          </p>
+        </div>
+      ) : null}
+    </section>
+  );
 }
 
-export default AgendaPanel
+export default AgendaPanel;

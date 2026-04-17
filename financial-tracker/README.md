@@ -17,11 +17,11 @@ By default, the app calls `http://localhost:5000/api`. To point it at a deployed
 2. Keep the framework preset as `Vite`.
 3. If you import the monorepo root, set the root directory to `financial-tracker`.
 4. Add the environment variables from `C:\Proj\software-design-team6-new\financial-tracker\.env.example`.
-5. Set `VITE_API_BASE_URL` to your deployed backend URL, for example `https://your-backend-domain.com/api`.
+5. Set `VITE_API_BASE_URL` to your deployed backend URL, for example `https://your-backend-project.vercel.app/api`.
 6. Deploy.
 
 The included `C:\Proj\software-design-team6-new\financial-tracker\vercel.json` enables SPA deep-linking so routes such as `/dashboard`, `/calendar`, and `/assistant` load correctly on refresh.
 
 ## Backend note
 
-The current Flask backend is better deployed to a Python host such as Render or Railway. Before connecting it to the Vercel frontend, set the backend environment variables from `C:\Proj\software-design-team6-new\financial-tracker-api\.env.example` and update Firebase Authentication authorized domains to include your Vercel domain.
+The companion backend in `C:\Proj\software-design-team6-new\financial-tracker-api` is now set up for a hosted Postgres connection, which makes a fully free Vercel deployment possible without relying on SQLite disk persistence.
