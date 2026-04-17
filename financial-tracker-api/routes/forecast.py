@@ -1,10 +1,7 @@
 import os
-import numpy as np
 import traceback
 from flask import Blueprint, jsonify
 from database.db import execute, get_db
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.neural_network import MLPRegressor
 
 forecast_bp = Blueprint('forecast', __name__)
 
@@ -20,7 +17,31 @@ _state = {
     'scaler': None,
     'window': 7,
     'error':  None,
+    'np': None,
+    'MinMaxScaler': None,
+    'MLPRegressor': None,
 }
+
+
+def _ensure_ml_dependencies():
+    if _state['np'] and _state['MinMaxScaler'] and _state['MLPRegressor']:
+        return True
+
+    try:
+        import numpy as np
+        from sklearn.preprocessing import MinMaxScaler
+        from sklearn.neural_network import MLPRegressor
+
+        _state['np'] = np
+        _state['MinMaxScaler'] = MinMaxScaler
+        _state['MLPRegressor'] = MLPRegressor
+        _state['error'] = None
+        return True
+    except Exception as exc:
+        _state['error'] = str(exc)
+        print(f"[forecast] Dependency load error: {exc}")
+        traceback.print_exc()
+        return False
 
 # ══════════════════════════════════════════════════════════
 # RETRAINING ENGINE
@@ -29,7 +50,13 @@ _state = {
 def _retrain_model(sales_data):
     """Takes raw sales list, trains the model, and updates _state"""
     try:
+        if not _ensure_ml_dependencies():
+            return False
+
         print("[forecast] Retraining MLP model with latest database records...")
+        np = _state['np']
+        MinMaxScaler = _state['MinMaxScaler']
+        MLPRegressor = _state['MLPRegressor']
 
         # 1. Prepare Data
         data = np.array(sales_data).reshape(-1, 1)
@@ -88,6 +115,10 @@ def _get_daily_sales():
 
 
 def _run_forecast(sales, steps=7):
+    if not _ensure_ml_dependencies():
+        raise RuntimeError(_state['error'] or 'Forecast dependencies are unavailable.')
+
+    np = _state['np']
     model = _state['model']
     window = _state['window']
     scaler = _state['scaler']
@@ -124,6 +155,9 @@ def _label(amount):
 def get_forecast():
     sales = _get_daily_sales()
 
+    if not _ensure_ml_dependencies():
+        return jsonify({'error': 'Forecast service is unavailable', 'details': _state['error']}), 503
+
     # Validation: Need enough data to fill the "Window"
     if len(sales) < _state['window']:
         return jsonify({'error': f'Need at least {_state["window"]} days of data.'}), 400
@@ -149,6 +183,9 @@ def get_forecast():
 @forecast_bp.route('/forecast/budget', methods=['GET'])
 def get_budget():
     sales = _get_daily_sales()
+    if not _ensure_ml_dependencies():
+        return jsonify({'recommended_budget': 0, 'label': 'Forecast service unavailable'}), 503
+
     if len(sales) < _state['window']:
         return jsonify({'recommended_budget': 0, 'label': 'Insufficient data'}), 400
 
