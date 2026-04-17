@@ -147,6 +147,24 @@ def _label(amount):
     else:
         return 'Active sales week'
 
+
+def _build_fallback_forecast(sales, steps=7):
+    recent = [float(v) for v in sales[-steps:] if v is not None]
+    if not recent:
+        return [0.0] * steps
+
+    baseline = sum(recent) / len(recent)
+    drift = 0.0
+    if len(recent) > 1:
+        drift = (recent[-1] - recent[0]) / (len(recent) - 1)
+
+    forecast = []
+    for day in range(steps):
+        projected = baseline + (drift * day)
+        forecast.append(round(max(projected, 0.0), 2))
+
+    return forecast
+
 # ══════════════════════════════════════════════════════════
 # ROUTES
 # ══════════════════════════════════════════════════════════
@@ -154,18 +172,44 @@ def _label(amount):
 @forecast_bp.route('/forecast', methods=['GET'])
 def get_forecast():
     sales = _get_daily_sales()
+    fallback_forecast = _build_fallback_forecast(sales, _state['window'])
+    fallback_budget = round(sum(fallback_forecast), 2)
 
     if not _ensure_ml_dependencies():
-        return jsonify({'error': 'Forecast service is unavailable', 'details': _state['error']}), 503
+        return jsonify({
+            'model': 'Baseline fallback',
+            'forecast': fallback_forecast,
+            'recommended_budget': fallback_budget,
+            'budget_label': _label(fallback_budget),
+            'recent_sales': [round(float(v), 2) for v in sales[-30:]],
+            'total_history_days': len(sales),
+            'note': 'Forecast dependencies are unavailable, so a baseline estimate is being shown.',
+        }), 200
 
     # Validation: Need enough data to fill the "Window"
     if len(sales) < _state['window']:
-        return jsonify({'error': f'Need at least {_state["window"]} days of data.'}), 400
+        return jsonify({
+            'model': 'Baseline fallback',
+            'forecast': fallback_forecast,
+            'recommended_budget': fallback_budget,
+            'budget_label': _label(fallback_budget),
+            'recent_sales': [round(float(v), 2) for v in sales[-30:]],
+            'total_history_days': len(sales),
+            'note': f'Add at least {_state["window"]} days of sales to unlock the trained forecast model.',
+        }), 200
 
     # Retrain every time the endpoint is called
     success = _retrain_model(sales)
     if not success:
-        return jsonify({'error': 'Model training failed'}), 500
+        return jsonify({
+            'model': 'Baseline fallback',
+            'forecast': fallback_forecast,
+            'recommended_budget': fallback_budget,
+            'budget_label': _label(fallback_budget),
+            'recent_sales': [round(float(v), 2) for v in sales[-30:]],
+            'total_history_days': len(sales),
+            'note': 'Model training failed, so a baseline estimate is being shown instead.',
+        }), 200
 
     forecast = _run_forecast(sales)
     recommended_budget = round(sum(forecast), 2)
@@ -183,21 +227,43 @@ def get_forecast():
 @forecast_bp.route('/forecast/budget', methods=['GET'])
 def get_budget():
     sales = _get_daily_sales()
+    fallback_forecast = _build_fallback_forecast(sales, _state['window'])
+    fallback_budget = round(sum(fallback_forecast), 2)
+
     if not _ensure_ml_dependencies():
-        return jsonify({'recommended_budget': 0, 'label': 'Forecast service unavailable'}), 503
+        return jsonify({
+            'recommended_budget': fallback_budget,
+            'daily_forecast': fallback_forecast,
+            'label': _label(fallback_budget),
+            'model': 'Baseline fallback',
+            'note': 'Forecast dependencies are unavailable, so a baseline estimate is being shown.',
+        }), 200
 
     if len(sales) < _state['window']:
-        return jsonify({'recommended_budget': 0, 'label': 'Insufficient data'}), 400
+        return jsonify({
+            'recommended_budget': fallback_budget,
+            'daily_forecast': fallback_forecast,
+            'label': _label(fallback_budget),
+            'model': 'Baseline fallback',
+            'note': f'Add at least {_state["window"]} days of sales to unlock the trained forecast model.',
+        }), 200
 
     # Ensure model is ready
-    if not _state['loaded']:
-        _retrain_model(sales)
+    if not _state['loaded'] and not _retrain_model(sales):
+        return jsonify({
+            'recommended_budget': fallback_budget,
+            'daily_forecast': fallback_forecast,
+            'label': _label(fallback_budget),
+            'model': 'Baseline fallback',
+            'note': 'Model training failed, so a baseline estimate is being shown instead.',
+        }), 200
 
     forecast = _run_forecast(sales)
     total = round(sum(forecast), 2)
 
     return jsonify({
         'recommended_budget': total,
+        'daily_forecast': forecast,
         'label': _label(total),
         'model': 'MLP (Dynamic)'
     }), 200
