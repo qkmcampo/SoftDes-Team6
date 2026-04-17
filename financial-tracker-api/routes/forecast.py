@@ -110,6 +110,15 @@ def _get_daily_sales():
         ORDER BY date ASC
     ''')
     rows = cur.fetchall()
+    if not rows:
+        execute(cur, '''
+            SELECT date, SUM(amount) as total_sales
+            FROM transactions
+            WHERE amount > 0
+            GROUP BY date
+            ORDER BY date ASC
+        ''')
+        rows = cur.fetchall()
     conn.close()
     return [r['total_sales'] for r in rows]
 

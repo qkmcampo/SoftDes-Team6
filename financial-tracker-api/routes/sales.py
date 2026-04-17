@@ -8,16 +8,37 @@ from database.db import execute, get_db, insert_and_get_id
 sales_bp = Blueprint('sales', __name__)
 
 
+def _get_income_sales_rows(cursor):
+    execute(
+        cursor,
+        '''
+        SELECT
+            id,
+            COALESCE(NULLIF(TRIM(to_name), ''), NULLIF(TRIM(category), ''), 'Income entry') AS item_name,
+            1 AS quantity,
+            amount AS price,
+            amount AS total,
+            date
+        FROM transactions
+        WHERE amount > 0
+        ORDER BY date DESC, id DESC
+        '''
+    )
+    return [dict(row) for row in cursor.fetchall()]
+
+
 @sales_bp.route('/sales', methods=['GET'])
 def get_sales():
     try:
         conn = get_db()
         cursor = conn.cursor()
         execute(cursor, 'SELECT * FROM sales ORDER BY date DESC, id DESC')
-        rows = cursor.fetchall()
+        rows = [dict(row) for row in cursor.fetchall()]
+        if not rows:
+            rows = _get_income_sales_rows(cursor)
         conn.close()
 
-        return jsonify([dict(row) for row in rows]), 200
+        return jsonify(rows), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -28,16 +49,26 @@ def get_sales_summary():
         conn = get_db()
         cursor = conn.cursor()
         execute(cursor, 'SELECT date, total FROM sales ORDER BY date ASC, id ASC')
-        rows = cursor.fetchall()
+        rows = [dict(row) for row in cursor.fetchall()]
+        if not rows:
+            execute(
+                cursor,
+                '''
+                SELECT date, amount AS total
+                FROM transactions
+                WHERE amount > 0
+                ORDER BY date ASC, id ASC
+                '''
+            )
+            rows = [dict(row) for row in cursor.fetchall()]
         conn.close()
 
         grouped = OrderedDict()
         for row in rows:
-            row_data = dict(row)
-            raw_date = str(row_data.get('date') or '').strip()
+            raw_date = str(row.get('date') or '').strip()
             month = raw_date[:7] if len(raw_date) >= 7 else 'Unknown'
             bucket = grouped.setdefault(month, {'month': month, 'total_sales': 0.0, 'transaction_count': 0})
-            bucket['total_sales'] = round(bucket['total_sales'] + float(row_data.get('total') or 0), 2)
+            bucket['total_sales'] = round(bucket['total_sales'] + float(row.get('total') or 0), 2)
             bucket['transaction_count'] += 1
 
         return jsonify(list(grouped.values())), 200
