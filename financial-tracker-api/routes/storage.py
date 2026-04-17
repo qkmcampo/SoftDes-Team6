@@ -31,7 +31,7 @@ def add_item():
         VALUES (?, ?, ?, ?, ?, ?)''',
         (
             data['item_name'],
-            data.get('emoji', '??'),
+            data.get('emoji', '📦'),
             int(data.get('current_stock', 0)),
             data.get('unit', 'pcs'),
             int(data.get('min_level', 10)),

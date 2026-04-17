@@ -54,7 +54,7 @@ const teamMembers = [
     track: "Cyber Physical System",
     color: "#050725",
     initials: "MR",
-    photo: null,
+    photo: "/team/Maynard_Refugia.jpg",
   },
 ];
 
@@ -225,7 +225,6 @@ function AboutSection() {
         <div className="mt-6 grid gap-5 xl:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
           {leader ? (
             <article className="rounded-[24px] border border-[#2C2F45] bg-[#2C2F45] px-5 py-5 text-white shadow-[0_18px_40px_rgba(5,7,37,0.12)]">
-              <p className="section-eyebrow text-[#F9B672]">Leader spotlight</p>
               <div className="mt-4 flex items-start gap-4">
                 {leader.photo ? (
                   <img
@@ -248,15 +247,7 @@ function AboutSection() {
                 <div>
                   <h3 className="text-2xl font-semibold">{leader.name}</h3>
                   <p className="mt-2 text-sm text-white/70">{leader.track}</p>
-                  <p className="mt-4 text-sm leading-7 text-white/72">
-                    Leads the project direction and helps keep the system aligned across financial tracking, planning, and presentation quality.
-                  </p>
                 </div>
-              </div>
-
-              <div className="mt-5 inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#F9B672]">
-                <Shield size={12} />
-                Project lead
               </div>
             </article>
           ) : null}
