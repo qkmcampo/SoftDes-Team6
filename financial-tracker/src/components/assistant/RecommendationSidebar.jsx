@@ -39,7 +39,6 @@ function RecommendationSidebar() {
       );
     } catch (error) {
       console.error("Failed to load recommendations:", error);
-      setRecommendations([]);
     }
     setIsLoading(false);
   };

@@ -19,6 +19,8 @@ import AddTransactionModal from "../components/dashboard/AddTransactionModal";
 import useSectionFocus from "../hooks/useSectionFocus";
 import { forecastAPI, salesAPI, storageAPI, transactionsAPI } from "../services/api";
 
+const DASHBOARD_OVERVIEW_STORAGE_KEY = "financial-tracker-dashboard-overview";
+
 const currencyFormatter = new Intl.NumberFormat("en-PH", {
   style: "currency",
   currency: "PHP",
@@ -62,6 +64,35 @@ function toNumber(value) {
 function parseDateValue(value) {
   const parsedDate = new Date(value);
   return Number.isNaN(parsedDate.getTime()) ? null : parsedDate;
+}
+
+function loadStoredOverview() {
+  try {
+    const raw = window.localStorage.getItem(DASHBOARD_OVERVIEW_STORAGE_KEY);
+    if (!raw) {
+      return {
+        transactions: [],
+        inventory: [],
+        sales: [],
+        budget: null,
+      };
+    }
+
+    const parsed = JSON.parse(raw);
+    return {
+      transactions: Array.isArray(parsed?.transactions) ? parsed.transactions : [],
+      inventory: Array.isArray(parsed?.inventory) ? parsed.inventory : [],
+      sales: Array.isArray(parsed?.sales) ? parsed.sales : [],
+      budget: parsed?.budget ?? null,
+    };
+  } catch {
+    return {
+      transactions: [],
+      inventory: [],
+      sales: [],
+      budget: null,
+    };
+  }
 }
 
 function MetricPanel({
@@ -289,12 +320,7 @@ export default function Dashboard({ user }) {
   const [refreshKey, setRefreshKey] = useState(0);
   const [overviewLoading, setOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState("");
-  const [overview, setOverview] = useState({
-    transactions: [],
-    inventory: [],
-    sales: [],
-    budget: null,
-  });
+  const [overview, setOverview] = useState(loadStoredOverview);
 
   const analyticsRef = useRef(null);
   const budgetRef = useRef(null);
@@ -356,23 +382,31 @@ export default function Dashboard({ user }) {
       forecastAPI.getBudget(requestOptions),
     ]);
 
-    const nextOverview = {
-      transactions:
-        transactionsResult.status === "fulfilled" && Array.isArray(transactionsResult.value)
-          ? transactionsResult.value
-          : [],
-      inventory:
-        inventoryResult.status === "fulfilled" && Array.isArray(inventoryResult.value)
-          ? inventoryResult.value
-          : [],
-      sales:
-        salesResult.status === "fulfilled" && Array.isArray(salesResult.value)
-          ? salesResult.value
-          : [],
-      budget: budgetResult.status === "fulfilled" ? budgetResult.value : null,
-    };
+    setOverview((previousOverview) => {
+      const nextOverview = {
+        transactions:
+          transactionsResult.status === "fulfilled" && Array.isArray(transactionsResult.value)
+            ? transactionsResult.value
+            : previousOverview.transactions,
+        inventory:
+          inventoryResult.status === "fulfilled" && Array.isArray(inventoryResult.value)
+            ? inventoryResult.value
+            : previousOverview.inventory,
+        sales:
+          salesResult.status === "fulfilled" && Array.isArray(salesResult.value)
+            ? salesResult.value
+            : previousOverview.sales,
+        budget: budgetResult.status === "fulfilled" ? budgetResult.value : previousOverview.budget,
+      };
 
-    setOverview(nextOverview);
+      try {
+        window.localStorage.setItem(DASHBOARD_OVERVIEW_STORAGE_KEY, JSON.stringify(nextOverview));
+      } catch {
+        // Keep the app usable even if storage is unavailable.
+      }
+
+      return nextOverview;
+    });
 
     if (
       transactionsResult.status === "rejected" ||

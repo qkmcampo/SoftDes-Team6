@@ -3,6 +3,13 @@ const BASE_URL = (import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/ap
   "",
 );
 const responseCache = new Map();
+const RETRYABLE_STATUS_CODES = new Set([502, 503, 504]);
+
+function wait(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
 
 function cloneData(data) {
   if (data == null) {
@@ -79,6 +86,18 @@ async function request(endpoint, options = {}) {
 
     return data;
   } catch (error) {
+    if (
+      normalizedMethod === "GET" &&
+      !fetchOptions.__retried &&
+      (!("status" in error) || RETRYABLE_STATUS_CODES.has(error.status))
+    ) {
+      await wait(500);
+      return request(endpoint, {
+        ...options,
+        __retried: true,
+      });
+    }
+
     console.error(`API Error [${endpoint}]:`, error.message);
     throw error;
   }

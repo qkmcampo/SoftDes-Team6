@@ -63,7 +63,6 @@ function RecentTransactions({ refreshKey = 0, maxItems = 7, onTransactionDeleted
       );
     } catch (error) {
       console.error("Failed to fetch transactions:", error);
-      setTransactions([]);
     } finally {
       setLoading(false);
     }
