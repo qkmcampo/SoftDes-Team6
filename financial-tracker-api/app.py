@@ -78,6 +78,15 @@ def health():
     }
 
 
+@app.route("/", methods=["GET"])
+def root():
+    return {
+        "status": "ok",
+        "message": "Gerald Retail API is live",
+        "health": "/api/health",
+    }
+
+
 # -----------------------------
 # Run Flask server
 # -----------------------------

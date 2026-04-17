@@ -10,8 +10,23 @@ except ImportError:  # pragma: no cover - only needed for hosted Postgres deploy
     dict_row = None
 
 DB_NAME = "financial_tracker.db"
-DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), DB_NAME)
-DB_PATH = os.getenv("DATABASE_PATH", DEFAULT_DB_PATH)
+
+
+def _default_db_path() -> str:
+    env_path = os.getenv("DATABASE_PATH")
+    if env_path:
+        return env_path
+
+    # Vercel file systems are read-only except for /tmp, so use that when no
+    # hosted Postgres database has been attached yet.
+    if os.getenv("VERCEL") and not os.getenv("DATABASE_URL", "").strip():
+        return os.path.join("/tmp", DB_NAME)
+
+    return os.path.join(os.path.dirname(__file__), DB_NAME)
+
+
+DEFAULT_DB_PATH = _default_db_path()
+DB_PATH = DEFAULT_DB_PATH
 DATABASE_URL = os.getenv("DATABASE_URL", "").strip()
 POSTGRES_SSLMODE = os.getenv("POSTGRES_SSLMODE", "").strip()
 
